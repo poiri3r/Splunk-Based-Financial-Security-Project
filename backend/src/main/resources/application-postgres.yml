@@ -1,0 +1,16 @@
+# postgres 프로필에서 기본 설정 위에 적용되는 PostgreSQL 전용 설정.
+# 실행 시 SPRING_PROFILES_ACTIVE=postgres 를 지정한다.
+# DB_URL, DB_USER, DB_PASSWORD는 실제 서버 환경변수로 전달하며 여기에 비밀값을 적지 않는다.
+# DB_URL 예: jdbc:postgresql://DB호스트:5432/bankdb
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    # Flyway가 db/migration SQL을 순서대로 적용하고 DB에 적용 이력을 기록한다.
+    enabled: true
+  jpa:
+    hibernate:
+      # validate는 Java 엔티티와 DB 구조가 맞는지 검사한다. 구조 생성은 Flyway가 담당한다.
+      ddl-auto: validate

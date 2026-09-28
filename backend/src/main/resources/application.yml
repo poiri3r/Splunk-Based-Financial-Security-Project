@@ -1,0 +1,29 @@
+# application.yml: 모든 실행에 적용되는 기본 설정. YAML의 들여쓰기는 계층을 뜻한다.
+# ${이름:기본값}은 환경변수가 없으면 기본값을 쓰라는 뜻이다.
+# HTTP 서버 설정. 환경변수 PORT가 없으면 8080을 쓴다.
+server:
+  port: ${PORT:8080}
+spring:
+  # DB 접속 설정. 기본 H2는 메모리 DB이며 영구 데이터용 PostgreSQL은 postgres 프로필로 연결한다.
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:bank;DB_CLOSE_DELAY=-1} # 기본은 재시작하면 사라지는 로컬 DB
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+  # 기본 실행은 Flyway를 끄고 JPA의 자동 테이블 생성을 사용한다.
+  flyway:
+    enabled: false # 기본 로컬 H2는 기존 자동 생성 방식
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update} # 기본 실행의 자동 구조 변경. postgres 프로필은 validate로 덮어쓴다.
+    # HTTP 응답을 만드는 동안 DB 세션을 계속 열어 두는 기능을 끈다.
+    open-in-view: false
+  # JSON 응답의 날짜 표현 설정.
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+# Actuator 관련 설정 자리. 현재 pom.xml에는 Actuator가 없고 /health는 Health.java에서 직접 제공한다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
