@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>내 계좌 · UCON Bank</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/pages/accounts.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="accounts.html">UCON Bank</a>
+    <nav>
+      <a href="accounts.html" aria-current="page">내 계좌</a>
+      <a href="transfer.html">송금</a>
+    </nav>
+    <div class="user">
+      <span data-username></span>
+      <button type="button" class="button small" data-logout>로그아웃</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel" id="accounts-section">
+      <div class="panel-head">
+        <h1>내 계좌</h1>
+        <div class="actions">
+          <button type="button" class="button small" id="refresh-accounts">새로고침</button>
+          <button type="button" class="button" id="open-account">계좌 개설</button>
+        </div>
+      </div>
+      <p class="form-error" role="alert" hidden></p>
+      <p class="loading" id="accounts-loading">계좌 목록을 불러오는 중…</p>
+      <div class="empty-state" id="accounts-empty" hidden>
+        <p>아직 개설된 계좌가 없습니다.</p>
+        <p class="muted">위의 <strong>계좌 개설</strong> 버튼으로 첫 계좌를 만들어 보세요.</p>
+      </div>
+      <ul class="account-list" id="account-list"></ul>
+    </section>
+
+    <section class="panel" id="deposit-section">
+      <h2>시연용 가상 입금</h2>
+      <p class="notice warning">시연용 가상 입금 — 실제 입금이 아닙니다.</p>
+      <form id="deposit-form" novalidate>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="field">
+          <label for="deposit-account">입금할 계좌</label>
+          <select id="deposit-account" name="accountNumber" required></select>
+          <p class="field-error" data-error-for="accountNumber"></p>
+        </div>
+        <div class="field">
+          <label for="deposit-amount">금액 (원)</label>
+          <input id="deposit-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="예: 10000" required>
+          <p class="field-hint">0.01원 이상, 소수점 이하 두 자리까지</p>
+          <p class="field-error" data-error-for="amount"></p>
+        </div>
+        <button type="submit" class="button primary">가상 입금</button>
+      </form>
+
+      <div class="uncertain" id="deposit-uncertain" hidden role="alert">
+        <h3>결과 확인 필요</h3>
+        <p>서버 응답을 받지 못해 입금이 처리됐는지 알 수 없습니다. 같은 요청으로 다시 시도해도 중복 입금되지 않습니다.</p>
+        <div class="actions">
+          <button type="button" class="button primary" id="deposit-retry">같은 내용으로 다시 시도</button>
+          <a class="button" id="deposit-history" href="#">거래내역 확인</a>
+        </div>
+        <p class="muted">금액이나 계좌를 바꾸면 새 입금으로 처리됩니다.</p>
+      </div>
+
+      <p class="notice success" id="deposit-result" role="status" hidden></p>
+    </section>
+  </main>
+  <noscript>이 서비스는 JavaScript가 필요합니다.</noscript>
+</body>
+</html>
