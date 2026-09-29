@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>송금 · Project Bank</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/pages/transfer.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="accounts.html">Project Bank</a>
+    <nav>
+      <a href="accounts.html">내 계좌</a>
+      <a href="transfer.html" aria-current="page">송금</a>
+    </nav>
+    <div class="user">
+      <span data-username></span>
+      <button type="button" class="button small" data-logout>로그아웃</button>
+    </div>
+  </header>
+
+  <main class="container narrow">
+    <h1>송금</h1>
+    <ol class="steps" aria-label="송금 단계">
+      <li data-step-label="input">입력</li>
+      <li data-step-label="confirm">확인</li>
+      <li data-step-label="result">결과</li>
+    </ol>
+
+    <p class="loading" id="transfer-loading">계좌 목록을 불러오는 중…</p>
+    <div class="panel" id="no-accounts" hidden>
+      <p>송금할 계좌가 없습니다. <a href="accounts.html">내 계좌</a>에서 계좌를 먼저 개설해 주세요.</p>
+    </div>
+    <div class="panel" id="load-error" hidden>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+
+    <!-- 1. 입력 -->
+    <section class="panel" data-step="input" hidden>
+      <form id="transfer-form" novalidate>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="field">
+          <label for="from-account">출금 계좌</label>
+          <select id="from-account" name="fromAccount" required></select>
+          <p class="field-hint" id="from-balance"></p>
+          <p class="field-error" data-error-for="fromAccount"></p>
+        </div>
+        <div class="field">
+          <label for="to-account">받는 계좌</label>
+          <input id="to-account" name="toAccount" type="text" inputmode="numeric" autocomplete="off" placeholder="숫자만 입력" required>
+          <p class="field-error" data-error-for="toAccount"></p>
+        </div>
+        <div class="field">
+          <label for="amount">금액 (원)</label>
+          <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="예: 3000" required>
+          <p class="field-hint">0.01원 이상, 소수점 이하 두 자리까지</p>
+          <p class="field-error" data-error-for="amount"></p>
+        </div>
+        <button type="submit" class="button primary block">다음</button>
+      </form>
+    </section>
+
+    <!-- 2. 확인 -->
+    <section class="panel" data-step="confirm" hidden>
+      <h2>송금 내용을 확인해 주세요</h2>
+      <dl class="summary">
+        <dt>출금 계좌</dt><dd id="confirm-from"></dd>
+        <dt>받는 계좌</dt><dd id="confirm-to"></dd>
+        <dt>금액</dt><dd id="confirm-amount" class="amount-strong"></dd>
+      </dl>
+      <p class="form-error" role="alert" hidden></p>
+
+      <div class="uncertain" id="transfer-uncertain" hidden role="alert">
+        <h3>결과 확인 필요</h3>
+        <p>서버 응답을 받지 못해 송금이 처리됐는지 알 수 없습니다. 같은 요청으로 다시 시도해도 중복 송금되지 않습니다.</p>
+        <a class="button small" id="transfer-history" href="#">출금 계좌 거래내역 확인</a>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="button" id="edit-transfer">수정</button>
+        <button type="button" class="button primary" id="send-transfer">송금하기</button>
+      </div>
+    </section>
+
+    <!-- 3. 결과 -->
+    <section class="panel" data-step="result" hidden>
+      <h2>송금이 완료되었습니다</h2>
+      <dl class="summary">
+        <dt>거래 ID</dt><dd id="result-id" class="mono"></dd>
+        <dt>상태</dt><dd id="result-status"></dd>
+        <dt>금액</dt><dd id="result-amount"></dd>
+      </dl>
+      <h3>잔액</h3>
+      <ul class="balance-list" id="result-balances"></ul>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <a class="button" id="result-history" href="#">거래내역 보기</a>
+        <button type="button" class="button primary" id="new-transfer">새 송금</button>
+      </div>
+    </section>
+  </main>
+  <noscript>이 서비스는 JavaScript가 필요합니다.</noscript>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "bank-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Splunk IDS 프로젝트 - 은행 웹 프론트엔드 (순수 HTML/CSS/JS)",
+  "scripts": {
+    "dev": "http-server ./public -p 5500 -c-1 --proxy http://localhost:8080"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
