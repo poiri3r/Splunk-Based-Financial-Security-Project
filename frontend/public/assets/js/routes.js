@@ -11,4 +11,6 @@ export const ROUTES = {
   transfer: '/transfer/instant/',
   depositSim: '/deposit-sim/',
   openAccount: '/products/open/',
+  productJoin: '/products/join/',
+  subscriptions: '/inquiry/products/',
 };

@@ -1,5 +1,4 @@
 <!doctype html>
-<!-- 자동 생성 파일: frontend/site/sitemap.mjs를 고치고 npm run build로 다시 만든다. 직접 수정하지 말 것. -->
 <html lang="ko">
 <head>
 <!-- layout:head -->
@@ -12,6 +11,7 @@
 <link rel="stylesheet" href="/assets/css/layout.css">
 <script type="module" src="/assets/js/layout.js"></script>
 <!-- /layout:head -->
+<script type="module" src="/assets/js/pages/realestate.js"></script>
 </head>
 <body>
 <!-- layout:header -->
@@ -36,7 +36,7 @@
 <a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
 <button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
 <nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
-<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
 <li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
@@ -61,19 +61,53 @@
 <!-- layout:page-head -->
 <nav class="breadcrumb" aria-label="현재 위치"><ol><li><a href="/">홈</a></li><li><a href="/realestate/">부동산</a></li><li aria-current="page">시세조회</li></ol></nav>
 <h1 class="page-title">시세조회</h1>
-<p class="page-desc">아파트·주택 시세를 조회합니다.</p>
+<p class="page-desc">지역별 아파트 평균 시세를 지도에서 확인합니다.</p>
 <!-- /layout:page-head -->
-<form class="panel inquiry-form" method="get" action="/realestate/price/">
-<div class="form-grid">
-<div class="field"><label for="q-account">조회 계좌</label><select id="q-account" name="account"><option value="">계좌를 선택하세요</option></select></div>
-<div class="field"><label for="q-from">조회 기간</label><div class="date-range"><input id="q-from" type="date" name="from" aria-label="시작일"><span aria-hidden="true">~</span><input type="date" name="to" aria-label="종료일"></div></div>
-</div>
-<div class="actions end"><button type="submit" class="button primary">조회</button></div>
-</form>
-<section class="panel">
-<h2 class="section-title">조회 결과</h2>
-<p class="empty-state" data-stub-result="조회된 내역이 없습니다.">조회 조건을 선택한 뒤 조회 버튼을 눌러 주세요.</p>
-</section>
+  <p class="notice warning" id="re-notice">시연용 임시 시세입니다. 실제 시세와 무관합니다.</p>
+
+  <!-- GET으로 제출되어 ?city=&region= 이 주소와 서버 접근 로그에 남는다 -->
+  <form class="re-filter" method="get" action="/realestate/price/">
+    <div class="segment-tabs" role="group" aria-label="시·도" id="re-cities"></div>
+    <label for="re-region" class="sr-only">지역</label>
+    <select id="re-region" name="region"></select>
+    <input type="hidden" name="city" id="re-city">
+    <button type="submit" class="button">조회</button>
+  </form>
+
+  <p class="form-error" role="alert" hidden id="re-error"></p>
+
+  <div class="re-layout">
+    <section class="panel re-map-panel">
+      <div id="re-map" class="re-map" aria-label="지역별 시세 지도"></div>
+      <div class="re-map-fallback" id="re-map-fallback" hidden>
+        <p id="re-map-message">지도를 불러올 수 없습니다.</p>
+        <p class="muted">아래 목록에서 지역을 선택해 시세를 확인하세요.</p>
+      </div>
+    </section>
+
+    <section class="panel re-detail" id="re-detail" aria-live="polite">
+      <p class="rep-label" id="re-detail-city"></p>
+      <h2 id="re-detail-name"></h2>
+      <dl class="summary">
+        <dt>평균 매매가</dt><dd id="re-detail-sale"></dd>
+        <dt>평균 전세가</dt><dd id="re-detail-jeonse"></dd>
+        <dt>전세가율</dt><dd id="re-detail-ratio"></dd>
+        <dt>주간 변동률</dt><dd id="re-detail-change"></dd>
+      </dl>
+      <p class="muted small" id="re-detail-base"></p>
+      <a class="button block" href="/realestate/loan/">주택담보대출 안내</a>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2 class="section-title">지역별 시세 <span class="muted small" id="re-unit"></span></h2>
+    <div class="table-wrap">
+      <table class="tx-table re-table">
+        <thead><tr><th scope="col">지역</th><th scope="col" class="num">평균 매매가</th><th scope="col" class="num">평균 전세가</th><th scope="col" class="num">주간 변동률</th></tr></thead>
+        <tbody id="re-rows"></tbody>
+      </table>
+    </div>
+  </section>
 </main>
 </div>
 <!-- layout:footer -->
@@ -90,7 +124,7 @@
 </div></div>
 <div class="inner">
 <nav class="footer-menu" aria-label="전체 메뉴">
-<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>

@@ -22,10 +22,39 @@ export function validatePassword(password) {
   return null;
 }
 
+// 이름·전화번호 규칙은 백엔드 확정 전 가안이다(10.02 합의 사항 3-1). 확정되면 여기만 고친다.
+const NAME_RE = /^[가-힣A-Za-z ]{2,20}$/;
+const PHONE_RE = /^01\d{8,9}$/;
+
+export function validateName(name) {
+  if (!name) return '이름을 입력해 주세요.';
+  if (!NAME_RE.test(name)) return '이름은 한글·영문 2~20자로 입력해 주세요.';
+  return null;
+}
+
+// 하이픈·공백을 지운 숫자만 서버에 보낸다. 010-1234-5678 → 01012345678
+export const normalizePhone = (phone) => String(phone ?? '').replace(/[\s-]/g, '');
+
+export function validatePhone(phone) {
+  if (!phone) return '휴대폰 번호를 입력해 주세요.';
+  if (!PHONE_RE.test(phone)) return '휴대폰 번호를 확인해 주세요. (예: 010-1234-5678)';
+  return null;
+}
+
 // 계좌번호는 숫자 문자열. 자릿수는 고정하지 않는다(신규 16자리, demo 8자리).
 export function validateAccountNumber(number) {
   if (!number) return '계좌번호를 입력해 주세요.';
   if (!ACCOUNT_RE.test(number)) return '계좌번호는 숫자만 입력해 주세요.';
+  return null;
+}
+
+// 계좌 비밀번호: 숫자 4자리, 같은 숫자 4개(1111)와 연속 숫자(1234, 4321) 금지.
+export function validatePin(pin) {
+  if (!/^\d{4}$/.test(pin)) return '계좌 비밀번호는 숫자 4자리입니다.';
+  if (/^(\d)\1{3}$/.test(pin)) return '같은 숫자를 4번 반복할 수 없습니다.';
+  const d = [...pin].map(Number);
+  const steps = d.slice(1).map((n, i) => n - d[i]);
+  if (steps.every((s) => s === 1) || steps.every((s) => s === -1)) return '연속된 숫자는 사용할 수 없습니다.';
   return null;
 }
 

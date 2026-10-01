@@ -239,3 +239,35 @@
   .board-search { flex-wrap: wrap; }
   .board-search input { width: auto; flex: 1; }
 }
+
+/* ---- 부동산 시세조회 ---- */
+
+.re-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.re-filter select { width: 180px; padding: 9px 12px; font: inherit; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.segment-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-right: 8px; }
+.segment-tabs a { padding: 9px 18px; color: var(--text); text-decoration: none; background: var(--surface); }
+.segment-tabs a + a { border-left: 1px solid var(--border); }
+.segment-tabs a[aria-current] { background: var(--brand-secondary); color: #fff; font-weight: 700; }
+.re-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; }
+.re-map-panel { padding: 0; overflow: hidden; }
+.re-map { width: 100%; height: 440px; }
+.re-map-fallback { display: grid; place-content: center; height: 440px; padding: 24px; text-align: center; background: var(--surface-alt); }
+.re-map-fallback p { margin: 4px 0; }
+.re-detail h2 { font-size: 1.4rem; margin: 4px 0 16px; }
+.re-detail .button { margin-top: 8px; }
+.up { color: var(--out); }
+.down { color: var(--in); }
+.re-table tr.selected td { background: var(--brand-primary-soft); }
+.re-table .link-button { color: var(--text); font-weight: 600; text-decoration: none; }
+.re-table .link-button:hover { text-decoration: underline; }
+.re-marker {
+  display: flex; flex-direction: column; align-items: center; padding: 4px 10px; border: 2px solid var(--brand-secondary);
+  border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.75rem; line-height: 1.3; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.2); white-space: nowrap;
+}
+.re-marker strong { font-size: 0.8rem; }
+.re-marker.selected { background: var(--brand-primary); border-color: var(--brand-primary-dark); color: var(--on-primary); z-index: 1; }
+@media (max-width: 1024px) {
+  .re-layout { grid-template-columns: minmax(0, 1fr); }
+  .re-map, .re-map-fallback { height: 320px; }
+}

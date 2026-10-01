@@ -6,9 +6,10 @@
 //   path    끝 슬래시 없이 적는다. 파일은 public{path}/index.html, 링크는 끝 슬래시를 붙여 만든다.
 //   status  live: 직접 작성한 페이지(실제 API 또는 목으로 동작). 생성기는 layout 구간만 교체한다.
 //           stub: 깡통 페이지. 파일 전체를 생성기가 만든다(직접 수정 금지).
-//   stub    깡통 화면 종류. notice(준비 중, 기본) | inquiry(빈 조회 폼) | board(게시판) | doc(약관 문서) | products(상품 목록)
+//   stub    깡통 화면 종류. notice(준비 중, 기본) | inquiry(빈 조회 폼) | board(게시판) | doc(약관 문서)
 //   auth    true면 로그인 필요. 토큰이 없으면 /login/?next=<현재 경로>로 이동한다.
 //   planned 나중에 실제 기능으로 바꿀 예정인 깡통의 메모 (화면에는 쓰이지 않음)
+//   nav     false면 메뉴(GNB·LNB·푸터·메뉴 홈·사이트맵)에 표시하지 않는다. 다른 화면에서 링크로만 들어오는 페이지용
 
 export const SITE_NAME = 'Project Bank';
 
@@ -22,6 +23,7 @@ export const CATEGORIES = [
       { title: '거래내역조회', path: '/inquiry/transactions', status: 'live', auth: true, desc: '계좌별 입출금 내역을 확인합니다.' },
       { title: '카드이용내역', path: '/inquiry/card', status: 'stub', stub: 'inquiry', auth: true, desc: '체크·신용카드 이용 내역을 조회합니다.' },
       { title: '대출조회', path: '/inquiry/loan', status: 'stub', stub: 'inquiry', auth: true, desc: '대출 잔액과 이자 납입 내역을 조회합니다.' },
+      { title: '예금·적금 가입내역', path: '/inquiry/products', status: 'live', auth: true, desc: '가입한 예금·적금 상품을 확인합니다.' },
       { title: '해지계좌조회', path: '/inquiry/closed', status: 'stub', stub: 'inquiry', auth: true, desc: '해지된 계좌의 과거 내역을 조회합니다.' },
       { title: '수표조회', path: '/inquiry/check', status: 'stub', stub: 'inquiry', desc: '자기앞수표의 정상 발행 여부를 확인합니다.' },
     ],
@@ -62,24 +64,10 @@ export const CATEGORIES = [
     title: '금융상품', path: '/products', gnb: true,
     desc: '예금, 적금, 대출 등 금융상품을 안내합니다.',
     children: [
-      {
-        title: '예금', path: '/products/deposit', status: 'stub', stub: 'products', planned: '백엔드 예적금 API 연동(10.12)',
-        desc: '목돈을 맡기고 이자를 받는 상품입니다.',
-        products: [
-          { tag: '대표', name: 'Project 정기예금', desc: '만기까지 확정 금리를 받는 기본 정기예금', rate: '연 3.20%', term: '1개월 ~ 36개월' },
-          { tag: '비대면', name: 'Project 스마트 예금', desc: '인터넷뱅킹 전용 우대 금리 예금', rate: '연 3.35%', term: '6개월 ~ 24개월' },
-          { tag: '입출금', name: 'Project 자유입출금 통장', desc: '언제든 입출금이 자유로운 통장', rate: '연 0.10%', term: '제한 없음' },
-        ],
-      },
-      {
-        title: '적금', path: '/products/savings', status: 'stub', stub: 'products', planned: '백엔드 예적금 API 연동(10.12)',
-        desc: '매월 일정 금액을 모으는 상품입니다.',
-        products: [
-          { tag: '대표', name: 'Project 정기적금', desc: '매월 같은 날 같은 금액을 저축하는 적금', rate: '연 3.50%', term: '6개월 ~ 36개월' },
-          { tag: '자유', name: 'Project 자유적금', desc: '원하는 날 원하는 금액을 저축하는 적금', rate: '연 3.30%', term: '6개월 ~ 24개월' },
-          { tag: '청년', name: 'Project 청년 도약적금', desc: '만 19~34세 대상 우대 금리 적금', rate: '연 4.00%', term: '12개월 ~ 36개월' },
-        ],
-      },
+      // 상품 데이터는 public/assets/js/data/products.js (백엔드 상품 API가 생기면 교체)
+      { title: '예금', path: '/products/deposit', status: 'live', desc: '목돈을 맡기고 이자를 받는 상품입니다.' },
+      { title: '적금', path: '/products/savings', status: 'live', desc: '매월 일정 금액을 모으는 상품입니다.' },
+      { title: '상품 가입', path: '/products/join', status: 'live', auth: true, nav: false, desc: '예금·적금 상품에 가입합니다.' },
       { title: '펀드', path: '/products/fund', status: 'stub', desc: '투자 성향에 맞는 펀드를 안내합니다.' },
       { title: '대출', path: '/products/loan', status: 'stub', desc: '신용·담보 대출 상품을 안내합니다.' },
       { title: '신탁', path: '/products/trust', status: 'stub', desc: '자산을 맡겨 운용하는 신탁 상품을 안내합니다.' },
@@ -89,11 +77,11 @@ export const CATEGORIES = [
     ],
   },
   {
-    // 실제 기능인지 깡통인지 미정(인수인계 8번 표 2). 정해지면 이 항목만 바꾼다.
+    // 시세조회: 카카오맵 + 임시 시세 데이터(프론트 정적 파일). 시세 API는 백엔드 선택 사항.
     title: '부동산', path: '/realestate', gnb: true,
     desc: '부동산 시세와 관련 금융 정보를 안내합니다.',
     children: [
-      { title: '시세조회', path: '/realestate/price', status: 'stub', stub: 'inquiry', planned: '실제 기능 여부 미정', desc: '아파트·주택 시세를 조회합니다.' },
+      { title: '시세조회', path: '/realestate/price', status: 'live', desc: '지역별 아파트 평균 시세를 지도에서 확인합니다.' },
       { title: '부동산 대출 안내', path: '/realestate/loan', status: 'stub', desc: '주택담보대출과 전세자금대출을 안내합니다.' },
     ],
   },
@@ -101,10 +89,10 @@ export const CATEGORIES = [
     title: '마이페이지', path: '/mypage', gnb: true,
     desc: '내 정보와 보안 설정을 관리합니다.',
     children: [
-      { title: '내 정보 조회·변경', path: '/mypage/profile', status: 'stub', auth: true, planned: '마이페이지 API 연동(범위 미정)', desc: '이름, 연락처 등 내 정보를 확인하고 변경합니다.' },
-      { title: '비밀번호 변경', path: '/mypage/password', status: 'stub', auth: true, planned: '마이페이지 API 연동(범위 미정)', desc: '로그인 비밀번호를 변경합니다.' },
-      { title: '접속 기록', path: '/mypage/login-history', status: 'stub', stub: 'inquiry', auth: true, desc: '최근 로그인 일시와 접속 환경을 확인합니다.' },
-      { title: '회원탈퇴', path: '/mypage/withdraw', status: 'stub', auth: true, desc: '인터넷뱅킹 서비스를 해지합니다.' },
+      { title: '내 정보 조회·변경', path: '/mypage/profile', status: 'live', auth: true, desc: '이름, 연락처 등 내 정보를 확인하고 변경합니다.' },
+      { title: '비밀번호 변경', path: '/mypage/password', status: 'live', auth: true, desc: '로그인 비밀번호를 변경합니다.' },
+      { title: '접속 기록', path: '/mypage/login-history', status: 'live', auth: true, desc: '최근 로그인 일시와 접속 환경을 확인합니다.' },
+      { title: '회원탈퇴', path: '/mypage/withdraw', status: 'live', auth: true, desc: '인터넷뱅킹 서비스를 해지합니다.' },
     ],
   },
   {
@@ -159,8 +147,8 @@ export const STANDALONE = [
   { title: '홈', path: '/', layout: 'home', status: 'live' },
   { title: '로그인', path: '/login', layout: 'plain', status: 'live' },
   { title: '회원가입', path: '/join', layout: 'plain', status: 'live' },
-  { title: '아이디 찾기', path: '/find-id', layout: 'plain', status: 'stub', planned: 'ID 찾기 화면·API (조건 미정)' },
-  { title: '비밀번호 재설정', path: '/find-pw', layout: 'plain', status: 'stub', planned: 'PW 재설정 화면·API (백엔드 명세 대기)' },
+  { title: '아이디 찾기', path: '/find-id', layout: 'plain', status: 'live' },
+  { title: '비밀번호 재설정', path: '/find-pw', layout: 'plain', status: 'live' },
   { title: '기업뱅킹', path: '/corporate', layout: 'plain', status: 'stub' },
   { title: '사이트맵', path: '/sitemap', layout: 'plain', status: 'stub', stub: 'sitemap' },
 ];

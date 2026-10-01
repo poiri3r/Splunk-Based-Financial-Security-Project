@@ -201,11 +201,34 @@ class IdempotentTx {
 
 export const api = {
   // 회원가입·계좌 개설은 멱등하지 않으므로 자동 재시도하지 않는다.
-  register: (username, password) =>
-    request({ method: 'POST', path: '/api/auth/register', body: JSON.stringify({ username, password }), auth: false }),
+  register: ({ username, password, name, phone }) =>
+    request({ method: 'POST', path: '/api/auth/register', body: JSON.stringify({ username, password, name, phone }), auth: false }),
 
   login: (username, password) =>
     request({ method: 'POST', path: '/api/auth/login', body: JSON.stringify({ username, password }), auth: false }),
+
+  // ID 찾기·비밀번호 재설정·마이페이지 (백엔드 가안 API. 현재는 목 서버만 응답한다)
+  // 상태를 바꾸는 요청은 자동 재시도하지 않는다.
+  findId: (name, phone) =>
+    request({ method: 'POST', path: '/api/auth/find-id', body: JSON.stringify({ name, phone }), auth: false }),
+
+  verifyPasswordReset: (username, name, phone) =>
+    request({ method: 'POST', path: '/api/auth/password-reset/verify', body: JSON.stringify({ username, name, phone }), auth: false }),
+
+  resetPassword: (resetToken, newPassword) =>
+    request({ method: 'POST', path: '/api/auth/password-reset', body: JSON.stringify({ resetToken, newPassword }), auth: false }),
+
+  getMe: () => request({ method: 'GET', path: '/api/me', auth: true }, GET_RETRY_DELAYS_MS),
+
+  updateMe: (fields) => request({ method: 'PATCH', path: '/api/me', body: JSON.stringify(fields), auth: true }),
+
+  changePassword: (currentPassword, newPassword) =>
+    request({ method: 'POST', path: '/api/me/password', body: JSON.stringify({ currentPassword, newPassword }), auth: true }),
+
+  loginHistory: () => request({ method: 'GET', path: '/api/me/login-history', auth: true }, GET_RETRY_DELAYS_MS),
+
+  withdraw: (password) =>
+    request({ method: 'POST', path: '/api/me/withdraw', body: JSON.stringify({ password }), auth: true }),
 
   openAccount: () => request({ method: 'POST', path: '/api/accounts', auth: true }),
 
@@ -224,4 +247,10 @@ export const api = {
 
   newTransfer: (fromAccount, toAccount, amount) =>
     new IdempotentTx('/api/transfers', { fromAccount, toAccount, amount }),
+
+  // 예금·적금 가입·조회 (백엔드 가안 API. 현재는 목 서버만 응답한다)
+  newSubscription: (productId, fromAccount, amount, termMonths) =>
+    new IdempotentTx(`/api/products/${encodeURIComponent(productId)}/subscriptions`, { fromAccount, amount, termMonths }),
+
+  listSubscriptions: () => request({ method: 'GET', path: '/api/subscriptions', auth: true }, GET_RETRY_DELAYS_MS),
 };

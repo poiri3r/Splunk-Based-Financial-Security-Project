@@ -39,3 +39,9 @@ export function formatCounterparty(counterparty) {
 export function transactionKind(amount) {
   return amount > 0 ? '입금' : '출금';
 }
+
+// 01012345678 → 010-1234-5678 (형식이 다르면 그대로 표시)
+export function formatPhone(phone) {
+  const m = /^(01\d)(\d{3,4})(\d{4})$/.exec(phone ?? '');
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : (phone ?? '');
+}

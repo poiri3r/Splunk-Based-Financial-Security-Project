@@ -1,5 +1,4 @@
 <!doctype html>
-<!-- 자동 생성 파일: frontend/site/sitemap.mjs를 고치고 npm run build로 다시 만든다. 직접 수정하지 말 것. -->
 <html lang="ko">
 <head>
 <!-- layout:head -->
@@ -12,6 +11,7 @@
 <link rel="stylesheet" href="/assets/css/layout.css">
 <script type="module" src="/assets/js/layout.js"></script>
 <!-- /layout:head -->
+<script type="module" src="/assets/js/pages/mypage-password.js"></script>
 </head>
 <body>
 <!-- layout:header -->
@@ -36,7 +36,7 @@
 <a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
 <button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
 <nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
-<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
 <li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
@@ -59,19 +59,33 @@
 </ul>
 </aside>
 <!-- /layout:lnb -->
-<main class="sub-main" id="main">
+<main class="sub-main narrow" id="main">
 <!-- layout:page-head -->
 <nav class="breadcrumb" aria-label="현재 위치"><ol><li><a href="/">홈</a></li><li><a href="/mypage/">마이페이지</a></li><li aria-current="page">비밀번호 변경</li></ol></nav>
 <h1 class="page-title">비밀번호 변경</h1>
 <p class="page-desc">로그인 비밀번호를 변경합니다.</p>
 <!-- /layout:page-head -->
-<section class="panel stub-notice">
-<p class="stub-badge">서비스 준비 중</p>
-<h2>비밀번호 변경 서비스를 준비하고 있습니다</h2>
-<p>더 나은 서비스를 위해 준비 중입니다. 이용에 불편을 드려 죄송합니다.</p>
-<p class="muted">문의: 고객센터 0000-0000 (시연용 가상 번호)</p>
-<div class="actions"><a href="/mypage/" class="button">마이페이지 메뉴로</a><a href="/" class="button primary">홈으로</a></div>
-</section>
+  <form class="panel" id="password-form" novalidate>
+    <p class="form-error" role="alert" hidden></p>
+    <p class="notice success" id="password-done" role="status" hidden>비밀번호가 변경되었습니다. 다른 기기의 로그인은 해제됩니다.</p>
+    <div class="field">
+      <label for="current-password">현재 비밀번호</label>
+      <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required>
+      <p class="field-error" data-error-for="currentPassword"></p>
+    </div>
+    <div class="field">
+      <label for="new-password">새 비밀번호</label>
+      <input id="new-password" name="newPassword" type="password" autocomplete="new-password" required>
+      <p class="field-hint">12~64자 (UTF-8 기준 72바이트 이하)</p>
+      <p class="field-error" data-error-for="newPassword"></p>
+    </div>
+    <div class="field">
+      <label for="new-password-confirm">새 비밀번호 확인</label>
+      <input id="new-password-confirm" name="newPasswordConfirm" type="password" autocomplete="new-password" required>
+      <p class="field-error" data-error-for="newPasswordConfirm"></p>
+    </div>
+    <div class="actions end"><button type="submit" class="button primary">비밀번호 변경</button></div>
+  </form>
 </main>
 </div>
 <!-- layout:footer -->
@@ -88,7 +102,7 @@
 </div></div>
 <div class="inner">
 <nav class="footer-menu" aria-label="전체 메뉴">
-<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>

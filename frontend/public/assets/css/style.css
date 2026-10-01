@@ -187,3 +187,23 @@ a { color: var(--link); }
   .panel { padding: 18px; }
   .mock-panel { right: 16px; width: auto; }
 }
+
+/* ---- 계좌개설 등 단계형 화면 ---- */
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.check.all { margin: 0 0 8px; padding: 14px 16px; border-radius: 6px; background: var(--surface-alt); }
+.agree-list { list-style: none; margin: 0 0 20px; padding: 0 16px; }
+.agree-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+.agree-list .check { margin: 12px 0; }
+.agree-list a { flex: none; font-size: 0.85rem; color: var(--muted); }
+.choice-list { display: grid; gap: 10px; margin: 0 0 12px; padding: 0; border: 0; }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--brand-primary); background: var(--brand-primary-soft); }
+.choice > span { display: flex; flex-direction: column; gap: 2px; }
+.choice .muted { font-size: 0.9rem; }
+@media (max-width: 600px) {
+  .steps li { padding: 8px 2px; font-size: 0.78rem; }
+}
+.tx-table td.ua { max-width: 320px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 0.85rem; }
+.auth-card .steps { margin-bottom: 20px; }
+.auth-card .steps li { font-size: 0.85rem; }

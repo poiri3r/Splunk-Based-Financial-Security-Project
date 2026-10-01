@@ -1,6 +1,6 @@
 import { api, isUncertain } from '../api.js';
 import { getToken } from '../session.js';
-import { validateUsername, validatePassword } from '../validate.js';
+import { validateUsername, validatePassword, validateName, validatePhone, normalizePhone } from '../validate.js';
 import { clearErrors, showFieldError, showFormError, showApiError, setBusy } from '../ui.js';
 import { ROUTES } from '../routes.js';
 
@@ -22,11 +22,18 @@ form.addEventListener('submit', async (event) => {
   if (password !== form.passwordConfirm.value) {
     return showFieldError(form, 'passwordConfirm', '비밀번호가 일치하지 않습니다.');
   }
+  // form.name은 폼 자신의 name 속성이라 입력칸은 elements로 꺼낸다.
+  const name = form.elements.namedItem('name').value.trim();
+  const nameError = validateName(name);
+  if (nameError) return showFieldError(form, 'name', nameError);
+  const phone = normalizePhone(form.phone.value);
+  const phoneError = validatePhone(phone);
+  if (phoneError) return showFieldError(form, 'phone', phoneError);
 
   // 회원가입은 멱등하지 않으므로 자동 재시도하지 않는다(api.register).
   setBusy(submit, true, '가입 중…');
   try {
-    await api.register(username, password); // 201, 본문 없음
+    await api.register({ username, password, name, phone }); // 201, 본문 없음
     location.replace(`${ROUTES.login}?registered=1`);
   } catch (err) {
     if (isUncertain(err)) {

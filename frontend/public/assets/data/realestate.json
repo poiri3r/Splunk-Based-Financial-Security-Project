@@ -1,0 +1,40 @@
+{
+  "notice": "시연용 임시 값입니다. 실제 시세와 무관합니다.",
+  "unit": "3.3㎡당 평균, 만원",
+  "baseDate": "2026-09-28",
+  "cities": [
+    {
+      "id": "busan", "name": "부산", "lat": 35.1631, "lng": 129.0590, "level": 8,
+      "regions": [
+        { "id": "haeundae", "name": "해운대구", "lat": 35.1631, "lng": 129.1636, "sale": 2610, "jeonse": 1480, "change": 0.08 },
+        { "id": "suyeong", "name": "수영구", "lat": 35.1455, "lng": 129.1131, "sale": 2720, "jeonse": 1530, "change": 0.11 },
+        { "id": "dongnae", "name": "동래구", "lat": 35.2049, "lng": 129.0837, "sale": 2080, "jeonse": 1260, "change": 0.04 },
+        { "id": "yeonje", "name": "연제구", "lat": 35.1762, "lng": 129.0799, "sale": 1930, "jeonse": 1190, "change": 0.02 },
+        { "id": "nam", "name": "남구", "lat": 35.1366, "lng": 129.0843, "sale": 1820, "jeonse": 1110, "change": 0.03 },
+        { "id": "busanjin", "name": "부산진구", "lat": 35.1629, "lng": 129.0532, "sale": 1710, "jeonse": 1060, "change": -0.01 },
+        { "id": "gangseo", "name": "강서구", "lat": 35.2122, "lng": 128.9806, "sale": 1520, "jeonse": 980, "change": 0.05 },
+        { "id": "geumjeong", "name": "금정구", "lat": 35.2428, "lng": 129.0922, "sale": 1390, "jeonse": 890, "change": -0.02 },
+        { "id": "gijang", "name": "기장군", "lat": 35.2446, "lng": 129.2222, "sale": 1310, "jeonse": 860, "change": -0.04 },
+        { "id": "dong", "name": "동구", "lat": 35.1294, "lng": 129.0453, "sale": 1220, "jeonse": 760, "change": 0.00 },
+        { "id": "buk", "name": "북구", "lat": 35.1972, "lng": 128.9903, "sale": 1110, "jeonse": 730, "change": -0.03 },
+        { "id": "sasang", "name": "사상구", "lat": 35.1527, "lng": 128.9910, "sale": 1050, "jeonse": 690, "change": -0.05 },
+        { "id": "saha", "name": "사하구", "lat": 35.1046, "lng": 128.9749, "sale": 1010, "jeonse": 680, "change": -0.06 },
+        { "id": "seo", "name": "서구", "lat": 35.0979, "lng": 129.0243, "sale": 990, "jeonse": 640, "change": -0.02 },
+        { "id": "jung", "name": "중구", "lat": 35.1063, "lng": 129.0324, "sale": 950, "jeonse": 610, "change": -0.03 },
+        { "id": "yeongdo", "name": "영도구", "lat": 35.0912, "lng": 129.0679, "sale": 860, "jeonse": 570, "change": -0.07 }
+      ]
+    },
+    {
+      "id": "seoul", "name": "서울", "lat": 37.5450, "lng": 127.0100, "level": 8,
+      "regions": [
+        { "id": "gangnam", "name": "강남구", "lat": 37.5172, "lng": 127.0473, "sale": 8520, "jeonse": 4130, "change": 0.21 },
+        { "id": "seocho", "name": "서초구", "lat": 37.4837, "lng": 127.0324, "sale": 8240, "jeonse": 4010, "change": 0.18 },
+        { "id": "yongsan", "name": "용산구", "lat": 37.5324, "lng": 126.9900, "sale": 6830, "jeonse": 3290, "change": 0.15 },
+        { "id": "songpa", "name": "송파구", "lat": 37.5145, "lng": 127.1059, "sale": 6510, "jeonse": 3380, "change": 0.17 },
+        { "id": "seongdong", "name": "성동구", "lat": 37.5634, "lng": 127.0369, "sale": 5530, "jeonse": 3020, "change": 0.12 },
+        { "id": "mapo", "name": "마포구", "lat": 37.5663, "lng": 126.9019, "sale": 5240, "jeonse": 2950, "change": 0.10 },
+        { "id": "nowon", "name": "노원구", "lat": 37.6542, "lng": 127.0568, "sale": 2730, "jeonse": 1640, "change": 0.02 }
+      ]
+    }
+  ]
+}

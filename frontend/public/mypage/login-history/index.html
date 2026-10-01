@@ -1,5 +1,4 @@
 <!doctype html>
-<!-- 자동 생성 파일: frontend/site/sitemap.mjs를 고치고 npm run build로 다시 만든다. 직접 수정하지 말 것. -->
 <html lang="ko">
 <head>
 <!-- layout:head -->
@@ -12,6 +11,7 @@
 <link rel="stylesheet" href="/assets/css/layout.css">
 <script type="module" src="/assets/js/layout.js"></script>
 <!-- /layout:head -->
+<script type="module" src="/assets/js/pages/mypage-history.js"></script>
 </head>
 <body>
 <!-- layout:header -->
@@ -36,7 +36,7 @@
 <a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
 <button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
 <nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
-<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
 <li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
@@ -65,17 +65,22 @@
 <h1 class="page-title">접속 기록</h1>
 <p class="page-desc">최근 로그인 일시와 접속 환경을 확인합니다.</p>
 <!-- /layout:page-head -->
-<form class="panel inquiry-form" method="get" action="/mypage/login-history/">
-<div class="form-grid">
-<div class="field"><label for="q-account">조회 계좌</label><select id="q-account" name="account"><option value="">계좌를 선택하세요</option></select></div>
-<div class="field"><label for="q-from">조회 기간</label><div class="date-range"><input id="q-from" type="date" name="from" aria-label="시작일"><span aria-hidden="true">~</span><input type="date" name="to" aria-label="종료일"></div></div>
-</div>
-<div class="actions end"><button type="submit" class="button primary">조회</button></div>
-</form>
-<section class="panel">
-<h2 class="section-title">조회 결과</h2>
-<p class="empty-state" data-stub-result="조회된 내역이 없습니다.">조회 조건을 선택한 뒤 조회 버튼을 눌러 주세요.</p>
-</section>
+  <section class="panel" id="history-section">
+    <div class="panel-head">
+      <h2 class="section-title">최근 로그인 기록 <span class="muted small">(최근 20건)</span></h2>
+      <button type="button" class="button small" id="history-refresh">새로고침</button>
+    </div>
+    <p class="form-error" role="alert" hidden></p>
+    <p class="loading" id="history-loading">접속 기록을 불러오는 중…</p>
+    <p class="empty-state" id="history-empty" hidden>접속 기록이 없습니다.</p>
+    <div class="table-wrap">
+      <table class="tx-table" id="history-table" hidden>
+        <thead><tr><th scope="col">일시</th><th scope="col">결과</th><th scope="col">IP</th><th scope="col">접속 환경</th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+    <p class="muted small">본인이 로그인하지 않은 기록이 있다면 즉시 <a href="/mypage/password/">비밀번호를 변경</a>하고 <a href="/security/report/">금융사고 신고</a>를 해 주세요.</p>
+  </section>
 </main>
 </div>
 <!-- layout:footer -->
@@ -92,7 +97,7 @@
 </div></div>
 <div class="inner">
 <nav class="footer-menu" aria-label="전체 메뉴">
-<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>

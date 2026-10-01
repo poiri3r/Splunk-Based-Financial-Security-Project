@@ -36,7 +36,7 @@
 <a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
 <button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
 <nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
-<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
 <li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
@@ -69,29 +69,131 @@
 <h1 class="page-title">계좌개설</h1>
 <p class="page-desc">새 입출금 계좌를 개설합니다.</p>
 <!-- /layout:page-head -->
-  <!-- 임시 화면: 단계형 개설(약관 → 상품 선택 → 옵션 → 확인)은 옵션 항목 확정 후 교체한다. -->
-  <section class="panel" id="open-section">
-    <h2 class="section-title">Project 자유입출금 통장</h2>
+  <ol class="steps" aria-label="계좌개설 단계">
+    <li data-step-label="terms">약관동의</li>
+    <li data-step-label="product">상품선택</li>
+    <li data-step-label="info">정보입력</li>
+    <li data-step-label="confirm">확인</li>
+    <li data-step-label="done">완료</li>
+  </ol>
+
+  <!-- 1. 약관동의 -->
+  <form class="panel" data-step="terms" id="terms-form" novalidate>
+    <h2 class="section-title">약관 및 상품설명서 동의</h2>
+    <p class="form-error" role="alert" hidden></p>
+    <label class="check all"><input type="checkbox" id="agree-all"> <strong>전체 동의</strong></label>
+    <ul class="agree-list">
+      <li><label class="check"><input type="checkbox" name="agree" value="basic" required> [필수] 예금거래기본약관</label><a href="/terms/" target="_blank" rel="noopener">보기</a></li>
+      <li><label class="check"><input type="checkbox" name="agree" value="product" required> [필수] 입출금이 자유로운 예금 약관</label><a href="/terms/" target="_blank" rel="noopener">보기</a></li>
+      <li><label class="check"><input type="checkbox" name="agree" value="desc" required> [필수] 상품설명서 내용을 확인하고 이해했습니다</label><a href="/guide/e-finance/" target="_blank" rel="noopener">보기</a></li>
+      <li><label class="check"><input type="checkbox" name="agree" value="privacy" required> [필수] 개인(신용)정보 수집·이용 동의</label><a href="/privacy/" target="_blank" rel="noopener">보기</a></li>
+      <li><label class="check"><input type="checkbox" name="agree" value="marketing"> [선택] 상품·서비스 안내 수신 동의</label></li>
+    </ul>
+    <div class="actions end"><button type="submit" class="button primary">다음</button></div>
+  </form>
+
+  <!-- 2. 상품선택 -->
+  <form class="panel" data-step="product" id="product-form" novalidate hidden>
+    <h2 class="section-title">상품 선택</h2>
+    <p class="form-error" role="alert" hidden></p>
+    <fieldset class="choice-list">
+      <legend class="sr-only">입출금 상품</legend>
+      <label class="choice"><input type="radio" name="product" value="free" checked>
+        <span><strong>Project 자유입출금 통장</strong><span class="muted">누구나 가입 · 연 0.10%</span></span></label>
+      <label class="choice"><input type="radio" name="product" value="salary">
+        <span><strong>Project 급여 통장</strong><span class="muted">급여 이체 시 전자금융 수수료 면제 · 연 0.10%</span></span></label>
+      <label class="choice"><input type="radio" name="product" value="youth">
+        <span><strong>Project 청년 통장</strong><span class="muted">만 19~34세 · 연 0.50%</span></span></label>
+    </fieldset>
+    <p class="field-hint">금리는 시연용 예시입니다. 예금·적금은 금융상품 메뉴에서 가입합니다.</p>
+    <div class="actions split">
+      <button type="button" class="button" data-back="terms">이전</button>
+      <button type="submit" class="button primary">다음</button>
+    </div>
+  </form>
+
+  <!-- 3. 정보입력 -->
+  <form class="panel" data-step="info" id="info-form" novalidate hidden>
+    <h2 class="section-title">계좌 정보 입력</h2>
+    <p class="form-error" role="alert" hidden></p>
+    <div class="field">
+      <label for="purpose">거래 목적</label>
+      <select id="purpose" name="purpose" required>
+        <option value="">선택하세요</option>
+        <option value="SALARY">급여 수령</option>
+        <option value="LIVING">생활비 관리</option>
+        <option value="SAVING">저축·투자</option>
+        <option value="BUSINESS">사업 거래</option>
+        <option value="OTHER">기타</option>
+      </select>
+      <p class="field-hint">금융거래 목적 확인 절차에 따라 입력받습니다.</p>
+      <p class="field-error" data-error-for="purpose"></p>
+    </div>
+    <div class="field">
+      <label for="fund-source">자금 출처</label>
+      <select id="fund-source" name="fundSource" required>
+        <option value="">선택하세요</option>
+        <option value="EARNED">근로·사업 소득</option>
+        <option value="ALLOWANCE">용돈·생활비</option>
+        <option value="FINANCIAL">금융 소득</option>
+        <option value="OTHER">기타</option>
+      </select>
+      <p class="field-error" data-error-for="fundSource"></p>
+    </div>
+    <div class="field">
+      <label for="nickname">계좌 별칭 <span class="muted">(선택)</span></label>
+      <input id="nickname" name="nickname" type="text" maxlength="20" autocomplete="off" placeholder="예: 생활비 통장">
+      <p class="field-hint">20자 이내</p>
+      <p class="field-error" data-error-for="nickname"></p>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="pin">계좌 비밀번호</label>
+        <input id="pin" name="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" required>
+        <p class="field-hint">숫자 4자리. 같은 숫자 반복·연속 숫자 불가</p>
+        <p class="field-error" data-error-for="pin"></p>
+      </div>
+      <div class="field">
+        <label for="pin-confirm">계좌 비밀번호 확인</label>
+        <input id="pin-confirm" name="pinConfirm" type="password" inputmode="numeric" maxlength="4" autocomplete="off" required>
+        <p class="field-error" data-error-for="pinConfirm"></p>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" name="alert" checked> 입출금 알림 받기</label>
+    <div class="actions split">
+      <button type="button" class="button" data-back="product">이전</button>
+      <button type="submit" class="button primary">다음</button>
+    </div>
+  </form>
+
+  <!-- 4. 확인 -->
+  <section class="panel" data-step="confirm" id="confirm-section" hidden>
+    <h2 class="section-title">입력 내용을 확인해 주세요</h2>
     <dl class="summary">
-      <dt>상품 종류</dt><dd>입출금이 자유로운 예금</dd>
-      <dt>기본금리</dt><dd>연 0.10% (시연용 예시)</dd>
-      <dt>개설 비용</dt><dd>없음</dd>
+      <dt>상품</dt><dd id="confirm-product"></dd>
+      <dt>거래 목적</dt><dd id="confirm-purpose"></dd>
+      <dt>자금 출처</dt><dd id="confirm-source"></dd>
+      <dt>계좌 별칭</dt><dd id="confirm-nickname"></dd>
+      <dt>계좌 비밀번호</dt><dd>설정됨</dd>
+      <dt>입출금 알림</dt><dd id="confirm-alert"></dd>
     </dl>
     <p class="form-error" role="alert" hidden></p>
-    <label class="check"><input type="checkbox" id="open-agree"> 예금거래기본약관과 상품설명서를 확인했습니다. (<a href="/terms/">약관 보기</a>)</label>
-    <div class="actions end">
-      <button type="button" class="button primary" id="open-account" disabled>계좌 개설</button>
+    <div class="actions split">
+      <button type="button" class="button" data-back="info" id="confirm-back">이전</button>
+      <button type="button" class="button primary" id="open-account">계좌 개설</button>
     </div>
   </section>
 
-  <section class="panel" id="open-result" hidden>
+  <!-- 5. 완료 -->
+  <section class="panel" data-step="done" id="open-result" hidden>
     <h2 class="section-title">계좌가 개설되었습니다</h2>
     <dl class="summary" id="result-summary">
+      <dt>상품</dt><dd id="result-product"></dd>
       <dt>계좌번호</dt><dd class="mono" id="result-number"></dd>
       <dt>잔액</dt><dd id="result-balance"></dd>
     </dl>
     <div class="actions">
-      <a class="button" id="result-history" href="/inquiry/accounts/">계좌 확인</a>
+      <a class="button" id="result-history" href="/inquiry/accounts/">거래내역</a>
       <a class="button" id="result-deposit" href="/deposit-sim/">가상 입금</a>
       <a class="button primary" href="/inquiry/accounts/">전체계좌조회</a>
     </div>
@@ -112,7 +214,7 @@
 </div></div>
 <div class="inner">
 <nav class="footer-menu" aria-label="전체 메뉴">
-<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<!-- layout:head -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상품 가입 | Project Bank</title>
+<meta name="pb-auth" content="required">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<script type="module" src="/assets/js/layout.js"></script>
+<!-- /layout:head -->
+<script type="module" src="/assets/js/pages/product-join.js"></script>
+</head>
+<body>
+<!-- layout:header -->
+<a class="skip-link" href="#main">본문 바로가기</a>
+<header class="site-header" id="top">
+<div class="util-bar"><div class="inner">
+<ul class="segment" aria-label="고객 구분">
+<li><a href="/" aria-current="true">개인</a></li>
+<li><a href="/corporate/">기업</a></li>
+</ul>
+<ul class="util-links">
+<li data-when="guest"><a href="/login/">로그인</a></li>
+<li data-when="guest"><a href="/join/">회원가입</a></li>
+<li data-when="member" hidden><span class="util-user"><strong data-username></strong>님</span></li>
+<li data-when="member" hidden><button type="button" class="link-button" data-logout>로그아웃</button></li>
+<li><a href="/support/">고객센터</a></li>
+<li><a href="/security/">보안센터</a></li>
+<li><a href="/sitemap/">사이트맵</a></li>
+</ul>
+</div></div>
+<div class="gnb-bar"><div class="inner">
+<a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
+<button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
+<nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
+<li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
+<li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
+<li class="gnb-item"><a href="/products/" class="gnb-link" aria-current="true">금융상품</a><ul class="gnb-sub"><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></li>
+<li class="gnb-item"><a href="/realestate/" class="gnb-link">부동산</a><ul class="gnb-sub"><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></li>
+<li class="gnb-item"><a href="/mypage/" class="gnb-link">마이페이지</a><ul class="gnb-sub"><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></li>
+</ul></nav>
+</div></div>
+</header>
+<!-- /layout:header -->
+<div class="sub-layout inner">
+<!-- layout:lnb -->
+<aside class="lnb" aria-label="금융상품 메뉴">
+<h2 class="lnb-title"><a href="/products/">금융상품</a></h2>
+<ul class="lnb-list">
+<li><a href="/products/deposit/">예금</a></li>
+<li><a href="/products/savings/">적금</a></li>
+<li><a href="/products/fund/">펀드</a></li>
+<li><a href="/products/loan/">대출</a></li>
+<li><a href="/products/trust/">신탁</a></li>
+<li><a href="/products/insurance/">보험</a></li>
+<li><a href="/products/isa/">ISA</a></li>
+<li><a href="/products/open/">계좌개설</a></li>
+</ul>
+</aside>
+<!-- /layout:lnb -->
+<main class="sub-main narrow" id="main">
+<!-- layout:page-head -->
+<nav class="breadcrumb" aria-label="현재 위치"><ol><li><a href="/">홈</a></li><li><a href="/products/">금융상품</a></li><li aria-current="page">상품 가입</li></ol></nav>
+<h1 class="page-title">상품 가입</h1>
+<p class="page-desc">예금·적금 상품에 가입합니다.</p>
+<!-- /layout:page-head -->
+  <section class="panel" id="join-missing" hidden>
+    <p class="empty-state">가입할 상품을 찾을 수 없습니다. <a href="/products/deposit/">예금</a> 또는 <a href="/products/savings/">적금</a> 상품 목록에서 다시 선택해 주세요.</p>
+  </section>
+
+  <div id="join-flow" hidden>
+    <ol class="steps" aria-label="상품 가입 단계">
+      <li data-step-label="terms">상품확인</li>
+      <li data-step-label="info">가입정보</li>
+      <li data-step-label="confirm">확인</li>
+      <li data-step-label="done">완료</li>
+    </ol>
+
+    <!-- 1. 상품확인·약관 -->
+    <form class="panel" data-step="terms" id="terms-form" novalidate>
+      <p class="rep-label" id="product-type"></p>
+      <h2 class="section-title" id="product-name"></h2>
+      <p class="muted" id="product-desc"></p>
+      <dl class="summary">
+        <dt>기본금리</dt><dd id="product-rate"></dd>
+        <dt>가입기간</dt><dd id="product-term"></dd>
+        <dt id="product-amount-label"></dt><dd id="product-amount"></dd>
+      </dl>
+      <p class="form-error" role="alert" hidden></p>
+      <label class="check all"><input type="checkbox" id="agree-all"> <strong>전체 동의</strong></label>
+      <ul class="agree-list">
+        <li><label class="check"><input type="checkbox" name="agree" required> [필수] 예금거래기본약관</label><a href="/terms/" target="_blank" rel="noopener">보기</a></li>
+        <li><label class="check"><input type="checkbox" name="agree" required> [필수] 상품 약관 및 상품설명서</label><a href="/guide/e-finance/" target="_blank" rel="noopener">보기</a></li>
+        <li><label class="check"><input type="checkbox" name="agree" required> [필수] 예금자보호법 설명 확인</label></li>
+      </ul>
+      <div class="actions end"><button type="submit" class="button primary">다음</button></div>
+    </form>
+
+    <!-- 2. 가입정보 -->
+    <form class="panel" data-step="info" id="info-form" novalidate hidden>
+      <h2 class="section-title">가입 정보 입력</h2>
+      <p class="form-error" role="alert" hidden></p>
+      <p class="loading" id="accounts-loading">계좌 목록을 불러오는 중…</p>
+      <p class="empty-state" id="no-accounts" hidden>출금할 계좌가 없습니다. <a href="/products/open/">계좌 개설</a> 후 이용해 주세요.</p>
+      <div id="info-fields" hidden>
+        <div class="field">
+          <label for="from-account">출금 계좌</label>
+          <select id="from-account" name="fromAccount" required></select>
+          <p class="field-hint" id="from-balance"></p>
+          <p class="field-error" data-error-for="fromAccount"></p>
+        </div>
+        <div class="field">
+          <label for="amount" id="amount-label">가입 금액 (원)</label>
+          <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" required>
+          <p class="field-hint" id="amount-hint"></p>
+          <p class="field-error" data-error-for="amount"></p>
+        </div>
+        <div class="field">
+          <label for="term">가입 기간</label>
+          <select id="term" name="termMonths" required></select>
+          <p class="field-error" data-error-for="termMonths"></p>
+        </div>
+      </div>
+      <div class="actions split">
+        <button type="button" class="button" data-back="terms">이전</button>
+        <button type="submit" class="button primary" id="info-next">다음</button>
+      </div>
+    </form>
+
+    <!-- 3. 확인 -->
+    <section class="panel" data-step="confirm" id="confirm-section" hidden>
+      <h2 class="section-title">가입 내용을 확인해 주세요</h2>
+      <dl class="summary">
+        <dt>상품</dt><dd id="confirm-product"></dd>
+        <dt>출금 계좌</dt><dd id="confirm-from"></dd>
+        <dt id="confirm-amount-label"></dt><dd id="confirm-amount" class="amount-strong"></dd>
+        <dt>가입 기간</dt><dd id="confirm-term"></dd>
+        <dt>기본금리</dt><dd id="confirm-rate"></dd>
+      </dl>
+      <p class="muted small" id="confirm-note"></p>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="uncertain" id="join-uncertain" hidden role="alert">
+        <h3>결과 확인 필요</h3>
+        <p>서버 응답을 받지 못해 가입이 처리됐는지 알 수 없습니다. 같은 요청으로 다시 시도해도 중복 가입되지 않습니다.</p>
+        <a class="button small" href="/inquiry/products/">가입내역 확인</a>
+      </div>
+      <div class="actions split">
+        <button type="button" class="button" id="confirm-back">이전</button>
+        <button type="button" class="button primary" id="join-submit">가입하기</button>
+      </div>
+    </section>
+
+    <!-- 4. 완료 -->
+    <section class="panel" data-step="done" hidden>
+      <h2 class="section-title">가입이 완료되었습니다</h2>
+      <dl class="summary">
+        <dt>상품</dt><dd id="result-product"></dd>
+        <dt>가입 번호</dt><dd class="mono" id="result-id"></dd>
+        <dt>만기일</dt><dd id="result-maturity"></dd>
+        <dt>출금 계좌 잔액</dt><dd id="result-balance"></dd>
+      </dl>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <a class="button" id="result-history" href="/inquiry/transactions/">출금 계좌 거래내역</a>
+        <a class="button primary" href="/inquiry/products/">가입내역 보기</a>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+<!-- layout:footer -->
+<footer class="site-footer">
+<div class="footer-top"><div class="inner">
+<ul class="footer-links">
+<li><a href="/terms/">이용약관</a></li>
+<li class="strong"><a href="/privacy/">개인정보처리방침</a></li>
+<li><a href="/guide/e-finance/">전자금융거래 이용안내</a></li>
+<li><a href="/security/">보안센터</a></li>
+<li><a href="/support/">고객센터</a></li>
+<li><a href="/sitemap/">사이트맵</a></li>
+</ul>
+</div></div>
+<div class="inner">
+<nav class="footer-menu" aria-label="전체 메뉴">
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
+<div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>
+<div class="footer-col"><h2><a href="/products/">금융상품</a></h2><ul><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></div>
+<div class="footer-col"><h2><a href="/realestate/">부동산</a></h2><ul><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></div>
+<div class="footer-col"><h2><a href="/mypage/">마이페이지</a></h2><ul><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></div>
+</nav>
+<div class="footer-info">
+<p class="footer-demo"><strong>시연용 가상 은행</strong> Project Bank는 보안 관제 프로젝트를 위해 만든 가상의 은행이며 실제 금융기관이 아닙니다. 실제 금융 정보나 개인정보를 입력하지 마세요.</p>
+<p>고객센터 0000-0000 (시연용 가상 번호) · © 2026 Project Bank (Demo)</p>
+</div>
+</div>
+</footer>
+<nav class="quickbar" aria-label="퀵메뉴">
+<p class="quickbar-title">QUICK</p>
+<ul><li><a href="/inquiry/accounts/">계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역</a></li><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/fx/rates/">환율조회</a></li><li><a href="/support/">고객센터</a></li></ul>
+<a class="quickbar-top" href="#top">TOP</a>
+</nav>
+<!-- /layout:footer -->
+</body>
+</html>

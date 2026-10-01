@@ -1,7 +1,9 @@
 # Frontend
 
 가상 은행 **Project Bank**의 웹 화면입니다. 프레임워크 없이 순수 HTML / CSS / JavaScript(ES Modules)로 작성했습니다.
-실제 동작하는 화면(로그인, 회원가입, 계좌조회, 거래내역, 즉시이체, 가상 입금, 계좌개설)과 메뉴 구성을 위한 준비 중 화면을 합쳐 60여 개 경로가 있습니다.
+실제 동작하는 화면(로그인, 회원가입, 계좌조회, 거래내역, 즉시이체, 가상 입금, 계좌개설, 예금·적금 가입, ID 찾기, 비밀번호 재설정, 마이페이지, 부동산 시세)과 메뉴 구성을 위한 준비 중 화면을 합쳐 64개 경로가 있습니다.
+
+일부 기능(예금·적금, ID 찾기, 비밀번호 재설정, 마이페이지, 계좌개설 옵션)은 **백엔드 API가 아직 없어 목 서버에서만 동작**합니다. API 가안은 팀 문서 `10.02 합의 사항.docx`에 있습니다.
 
 ## 실행
 
@@ -35,6 +37,8 @@ npm run dev
 |---|---|---|---|
 | alice | DemoPass123! | 10010001 | 100,000.00 |
 | bob | DemoPass456! | 10010002 | 50,000.00 |
+
+목 데이터의 이름·휴대폰 번호(ID 찾기·비밀번호 재설정용): alice = 김민지 / 010-1234-5678, bob = 이준호 / 010-9876-5432
 
 ### MOCK 패널
 
@@ -75,7 +79,8 @@ public/
   index.html          메인 (직접 작성)
   login/, join/, inquiry/accounts/, ...   각 경로의 index.html
   assets/css/         style.css(공통 요소), layout.css(페이지 골격)
-  assets/js/config.js       USE_MOCK, 타임아웃, 재시도 간격
+  assets/js/config.js       USE_MOCK, 타임아웃, 재시도 간격, 카카오맵 키
+  assets/js/data/           예금·적금 상품(products.js), 부동산 시세는 assets/data/realestate.json
   assets/js/routes.js       화면 코드가 이동하는 경로 상수
   assets/js/api.js          요청 계층: 토큰, 오류 파싱, 재시도, 멱등키
   assets/js/session.js      토큰 저장·만료, 로그인 필요 페이지 보호, ?next= 복귀
@@ -94,3 +99,9 @@ public/
 이것은 화면 이동일 뿐 보안 수단이 아닙니다. HTML은 누구나 받을 수 있고, 데이터는 서버의 401·404가 보호합니다.
 
 API 계약은 `backend/docs/bank-api-specv2.docx`를 따릅니다.
+
+## 카카오맵 (부동산 시세조회)
+
+`config.js`의 `KAKAO_MAP_KEY`는 Kakao Developers 앱의 **JavaScript 키**입니다. 등록된 도메인에서 열 때만 지도가 뜹니다.
+현재 등록된 주소는 `http://localhost:5500`뿐입니다(`127.0.0.1`이나 다른 포트로 열면 지도 대신 목록만 나옵니다).
+서버에 배포하면 그 주소를 [앱] > [플랫폼 키] > [JavaScript 키] > [JavaScript SDK 도메인]에 추가해야 합니다.

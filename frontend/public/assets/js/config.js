@@ -14,3 +14,8 @@ export const IDEMPOTENT_RETRY_DELAYS_MS = [1000, 2000];
 
 // GET 자동 재시도 간격(ms). 1회만 재시도한다.
 export const GET_RETRY_DELAYS_MS = [1000];
+
+// 카카오맵 JavaScript 키. 비어 있으면 부동산 시세조회는 지도 없이 목록으로만 나온다.
+// 이 키는 원래 페이지 소스에 노출되는 값이다. 보호는 Kakao Developers에 등록한 사이트 도메인으로 한다.
+// 등록한 도메인(예: http://localhost:5500)과 정확히 같은 주소로 열어야 지도가 뜬다.
+export const KAKAO_MAP_KEY = '00d74dbc82682c0753de8adeb9b21819';

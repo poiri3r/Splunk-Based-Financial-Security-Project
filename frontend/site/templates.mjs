@@ -12,6 +12,9 @@ export const href = (path) => (path === '/' ? '/' : `${path}/`);
 
 const link = (path, text, attrs = '') => `<a href="${esc(href(path))}"${attrs}>${esc(text)}</a>`;
 
+// 메뉴에 보이는 하위 페이지 (nav: false 제외)
+const menuOf = (category) => category.children.filter((child) => child.nav !== false);
+
 // ---------------------------------------------------------------------------
 // 사이트맵 → 페이지 목록
 
@@ -45,7 +48,7 @@ export function headRegion(page) {
 export function headerRegion(page) {
   const gnbItems = CATEGORIES.filter((c) => c.gnb).map((category) => {
     const current = page.category === category ? ' aria-current="true"' : '';
-    const subs = category.children.map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
+    const subs = menuOf(category).map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
     return `<li class="gnb-item">${link(category.path, category.title, ` class="gnb-link"${current}`)}<ul class="gnb-sub">${subs}</ul></li>`;
   }).join('\n');
 
@@ -78,7 +81,7 @@ ${gnbItems}
 
 export function lnbRegion(page) {
   const category = page.category;
-  const items = category.children.map((child) => {
+  const items = menuOf(category).map((child) => {
     const current = child.path === page.path ? ' aria-current="page"' : '';
     return `<li>${link(child.path, child.title, current)}</li>`;
   }).join('\n');
@@ -101,7 +104,7 @@ export function pageHeadRegion(page) {
 
 export function footerRegion() {
   const columns = CATEGORIES.filter((c) => c.gnb).map((category) => {
-    const items = category.children.map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
+    const items = menuOf(category).map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
     return `<div class="footer-col"><h2>${link(category.path, category.title)}</h2><ul>${items}</ul></div>`;
   }).join('\n');
   const quick = QUICK_LINKS.map((q) => `<li>${link(q.path, q.title)}</li>`).join('');
@@ -205,22 +208,8 @@ ${body}
 </article>`;
 }
 
-function productsBody(page) {
-  const cards = page.products.map((p) => `<li class="product-card">
-<span class="product-tag">${esc(p.tag)}</span>
-<h2>${esc(p.name)}</h2>
-<p>${esc(p.desc)}</p>
-<dl><dt>기본금리</dt><dd>${esc(p.rate)}</dd><dt>가입기간</dt><dd>${esc(p.term)}</dd></dl>
-<button type="button" class="button" disabled>가입 준비 중</button>
-</li>`).join('\n');
-  return `<p class="notice info">금리는 시연용 예시이며 세전 기준입니다.</p>
-<ul class="product-list">
-${cards}
-</ul>`;
-}
-
 function hubBody(page) {
-  const cards = page.category.children.map((child) => {
+  const cards = menuOf(page.category).map((child) => {
     const badge = child.auth ? '<span class="badge">로그인 필요</span>' : '';
     return `<li><a class="hub-card" href="${esc(href(child.path))}"><strong>${esc(child.title)}</strong><span>${esc(child.desc || '')}</span>${badge}</a></li>`;
   }).join('\n');
@@ -231,7 +220,7 @@ ${cards}
 
 function sitemapBody() {
   const columns = CATEGORIES.map((category) => {
-    const items = category.children.map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
+    const items = menuOf(category).map((child) => `<li>${link(child.path, child.title)}</li>`).join('');
     return `<section class="sitemap-col"><h2>${link(category.path, category.title)}</h2><ul>${items}</ul></section>`;
   });
   const etc = STANDALONE.filter((p) => !['/', '/sitemap'].includes(p.path))
@@ -244,7 +233,7 @@ ${columns.join('\n')}
 
 const STUB_BODIES = {
   notice: noticeBody, inquiry: inquiryBody, board: boardBody, doc: docBody,
-  products: productsBody, hub: hubBody, sitemap: sitemapBody,
+  hub: hubBody, sitemap: sitemapBody,
 };
 
 // ---------------------------------------------------------------------------
