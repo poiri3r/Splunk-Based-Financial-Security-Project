@@ -2,7 +2,7 @@
 // mock.js가 목 모드에서만 불러오므로 USE_MOCK = false이면 화면에 나타나지 않는다.
 
 import { FAULTS, getFault, setFault, resetDb } from './mock.js';
-import { clearSession } from '../js/session.js';
+import { clearSession } from '../assets/js/session.js';
 
 const COLLAPSED_KEY = 'mock-panel-collapsed';
 const MAX_LOG = 8;
@@ -31,7 +31,7 @@ export function mount() {
     if (!confirm('목 DB를 초기 상태로 되돌리고 로그아웃합니다.')) return;
     resetDb();
     clearSession();
-    location.href = 'login.html';
+    location.href = '/login/';
   });
 
   const logList = el('ol', { className: 'mock-log' });

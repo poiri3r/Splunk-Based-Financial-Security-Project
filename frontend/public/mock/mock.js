@@ -8,7 +8,7 @@
 // 금액은 서버의 BigDecimal을 흉내 내기 위해 내부에서 BigInt(1/100원 단위)로 계산하고,
 // 응답 JSON에는 소수 두 자리 숫자 리터럴(예: 100000.00)로 넣는다.
 
-import { TIMEOUT_MS } from '../js/config.js';
+import { TIMEOUT_MS } from '../assets/js/config.js';
 
 const DB_KEY = 'mock-db';
 const FAULT_KEY = 'mock-fault';
