@@ -3,7 +3,7 @@
 // - 확인 단계로 넘어갈 때 멱등키를 만들고 본문을 고정한다. 이전으로 돌아가면 그 거래를 버린다.
 // - 결과가 불확실하면 같은 키로 다시 보낸다. 4xx면 입력 단계로 돌아가 오류를 표시한다.
 // - 잔액은 계산하지 않고 항상 조회 값을 쓴다.
-// API는 백엔드 가안(10.02 합의 사항 3-5)이며 현재는 목 서버만 응답한다.
+// API는 백엔드 가안(docs/backend_request.docx 3-5)이며 현재는 목 서버만 응답한다.
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import { parseAmount } from '../validate.js';

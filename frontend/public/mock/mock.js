@@ -35,7 +35,7 @@ const isFault = (mode) => FAULTS.some(([m]) => m === mode);
 function seed() {
   return {
     version: DB_VERSION,
-    // name·phone·createdAt은 회원 정보 가안(10.02 합의 사항 3-1). 전화번호는 숫자만 저장한다.
+    // name·phone·createdAt은 회원 정보 가안(docs/backend_request.docx 3-1). 전화번호는 숫자만 저장한다.
     users: {
       alice: { password: 'DemoPass123!', name: '김민지', phone: '01012345678', createdAt: '2026-09-01T01:00:00Z' },
       bob: { password: 'DemoPass456!', name: '이준호', phone: '01098765432', createdAt: '2026-09-02T01:00:00Z' },
@@ -352,7 +352,7 @@ function transfer(ctx) {
   });
 }
 
-// 예금·적금 가입. 백엔드 요청 문서(10.02 합의 사항 3-5)의 가안 API를 흉내 낸다.
+// 예금·적금 가입. 백엔드 요청 문서(docs/backend_request.docx 3-5)의 가안 API를 흉내 낸다.
 // 첫 납입액(적금은 월 납입액)을 출금 계좌에서 빼고, 거래내역 상대방에는 상품명을 남긴다.
 // PRODUCT_NOT_FOUND는 프론트가 정한 임시 code다. 백엔드 확정 시 맞춘다.
 // 만기일은 한국 날짜 기준이다(UTC로 자르면 오전 9시 전 가입이 하루 앞당겨진다).
@@ -405,7 +405,7 @@ function listSubscriptions({ db, user }) {
   return json(200, list);
 }
 
-// ---- ID 찾기·비밀번호 재설정 (가안 10.02 합의 사항 3-2, 3-3) ----------------
+// ---- ID 찾기·비밀번호 재설정 (가안 docs/backend_request.docx 3-2, 3-3) ----------------
 
 const findUser = (db, name, phone) => Object.entries(db.users).find(([, u]) => u.name === name && u.phone === phone);
 const maskUsername = (u) => u.slice(0, 2) + '*'.repeat(Math.max(u.length - 2, 1));
@@ -448,7 +448,7 @@ function resetPassword({ db, body }) {
   return new Response(null, { status: 204 });
 }
 
-// ---- 마이페이지 (가안 10.02 합의 사항 3-6) ------------------------------------
+// ---- 마이페이지 (가안 docs/backend_request.docx 3-6) ------------------------------------
 
 const meView = (username, u) => ({ username, name: u.name, phone: u.phone, createdAt: u.createdAt });
 

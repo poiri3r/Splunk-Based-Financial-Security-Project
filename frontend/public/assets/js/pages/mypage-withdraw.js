@@ -1,4 +1,4 @@
-// 회원탈퇴. 비밀번호 재확인, 잔액이 남은 계좌·가입 중인 예적금이 있으면 서버가 거부한다(가안 10.02 합의 사항 3-6).
+// 회원탈퇴. 비밀번호 재확인, 잔액이 남은 계좌·가입 중인 예적금이 있으면 서버가 거부한다(가안 docs/backend_request.docx 3-6).
 // 탈퇴는 되돌릴 수 없으므로 자동 재시도하지 않는다.
 import { api, isUncertain } from '../api.js';
 import { requireAuth, clearSession } from '../session.js';

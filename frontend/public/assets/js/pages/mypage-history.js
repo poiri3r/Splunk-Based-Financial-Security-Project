@@ -1,4 +1,4 @@
-// 접속 기록: 최근 로그인 시도(성공·실패). 서버만 알 수 있는 정보라 API가 필요하다(가안 10.02 합의 사항 3-6).
+// 접속 기록: 최근 로그인 시도(성공·실패). 서버만 알 수 있는 정보라 API가 필요하다(가안 docs/backend_request.docx 3-6).
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import { formatDateTime } from '../format.js';

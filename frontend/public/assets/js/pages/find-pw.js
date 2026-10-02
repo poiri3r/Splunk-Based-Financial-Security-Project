@@ -1,4 +1,4 @@
-// 비밀번호 재설정: 본인 확인 → 재설정 토큰 → 새 비밀번호 (2단계 가안, 10.02 합의 사항 3-3)
+// 비밀번호 재설정: 본인 확인 → 재설정 토큰 → 새 비밀번호 (2단계 가안, docs/backend_request.docx 3-3)
 // 재설정 토큰은 메모리에만 둔다. 새로고침하면 본인 확인부터 다시 한다.
 import { api } from '../api.js';
 import { getToken } from '../session.js';

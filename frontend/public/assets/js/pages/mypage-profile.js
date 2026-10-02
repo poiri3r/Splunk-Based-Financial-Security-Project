@@ -1,4 +1,4 @@
-// 내 정보 조회·변경. 변경 가능한 항목은 휴대폰 번호만 둔다(가안 10.02 합의 사항 3-6).
+// 내 정보 조회·변경. 변경 가능한 항목은 휴대폰 번호만 둔다(가안 docs/backend_request.docx 3-6).
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import { validatePhone, normalizePhone } from '../validate.js';

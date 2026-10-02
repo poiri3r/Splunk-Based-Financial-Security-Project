@@ -22,7 +22,7 @@ export function validatePassword(password) {
   return null;
 }
 
-// 이름·전화번호 규칙은 백엔드 확정 전 가안이다(10.02 합의 사항 3-1). 확정되면 여기만 고친다.
+// 이름·전화번호 규칙은 백엔드 확정 전 가안이다(docs/backend_request.docx 3-1). 확정되면 여기만 고친다.
 const NAME_RE = /^[가-힣A-Za-z ]{2,20}$/;
 const PHONE_RE = /^01\d{8,9}$/;
 

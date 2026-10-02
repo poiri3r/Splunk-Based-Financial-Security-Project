@@ -1,4 +1,4 @@
-// 아이디 찾기: 이름 + 휴대폰 번호 (조건은 백엔드가 확정한다. 가안 10.02 합의 사항 3-2)
+// 아이디 찾기: 이름 + 휴대폰 번호 (조건은 백엔드가 확정한다. 가안 docs/backend_request.docx 3-2)
 import { api } from '../api.js';
 import { getToken } from '../session.js';
 import { validateName, validatePhone, normalizePhone } from '../validate.js';
