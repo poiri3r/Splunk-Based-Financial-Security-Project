@@ -1,19 +1,19 @@
 <!doctype html>
+<!-- 자동 생성 파일: frontend/site/sitemap.mjs를 고치고 npm run build로 다시 만든다. 직접 수정하지 말 것. -->
 <html lang="ko">
 <head>
 <!-- layout:head -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Project Bank - 개인뱅킹</title>
+<title>펀드 | Project Bank</title>
 <meta name="pb-auth" content="none">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/css/style.css">
 <link rel="stylesheet" href="/assets/css/layout.css">
 <script type="module" src="/assets/js/layout.js"></script>
 <!-- /layout:head -->
-<script type="module" src="/assets/js/pages/home.js"></script>
 </head>
-<body class="home">
+<body>
 <!-- layout:header -->
 <a class="skip-link" href="#main">본문 바로가기</a>
 <header class="site-header" id="top">
@@ -41,119 +41,44 @@
 <li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/beneficiaries/">자주 쓰는 계좌</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
-<li class="gnb-item"><a href="/products/" class="gnb-link">금융상품</a><ul class="gnb-sub"><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></li>
+<li class="gnb-item"><a href="/products/" class="gnb-link" aria-current="true">금융상품</a><ul class="gnb-sub"><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></li>
 <li class="gnb-item"><a href="/realestate/" class="gnb-link">부동산</a><ul class="gnb-sub"><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></li>
 <li class="gnb-item"><a href="/mypage/" class="gnb-link">마이페이지</a><ul class="gnb-sub"><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/pin-reset/">계좌 비밀번호 재설정</a></li><li><a href="/mypage/recovery-codes/">복구 코드 관리</a></li><li><a href="/mypage/terms/">약관 동의 내역</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></li>
 </ul></nav>
 </div></div>
 </header>
 <!-- /layout:header -->
-<main id="main">
-  <section class="home-hero"><div class="inner">
-    <div class="hero-banner" data-slider aria-roledescription="carousel" aria-label="추천 상품과 소식">
-      <article class="slide slide-1" data-slide aria-roledescription="slide">
-        <p class="slide-eyebrow">정기예금</p>
-        <h2>목돈은 안전하게<br>Project 정기예금 최고 연 3.20%</h2>
-        <p>1개월부터 36개월까지, 인터넷뱅킹으로 바로 가입하세요.</p>
-        <a class="button primary" href="/products/deposit/">자세히 보기</a>
-      </article>
-      <article class="slide slide-2" data-slide aria-roledescription="slide" hidden>
-        <p class="slide-eyebrow">적금</p>
-        <h2>매일 조금씩 쌓는 습관<br>Project 자유적금</h2>
-        <p>원하는 날, 원하는 금액만큼 자유롭게 저축합니다.</p>
-        <a class="button primary" href="/products/savings/">자세히 보기</a>
-      </article>
-      <article class="slide slide-3" data-slide aria-roledescription="slide" hidden>
-        <p class="slide-eyebrow">보안센터</p>
-        <h2>은행은 전화로<br>비밀번호를 묻지 않습니다</h2>
-        <p>금융기관·수사기관 사칭 전화를 받았다면 즉시 끊고 확인하세요.</p>
-        <a class="button primary" href="/security/phishing/">예방 방법 보기</a>
-      </article>
-      <div class="slider-controls">
-        <button type="button" data-slide-prev aria-label="이전 배너">‹</button>
-        <span data-slide-status aria-live="polite">1 / 3</span>
-        <button type="button" data-slide-next aria-label="다음 배너">›</button>
-        <button type="button" class="slider-toggle" data-slide-toggle>정지</button>
-      </div>
-    </div>
-
-    <aside class="login-box" aria-label="로그인">
-      <div data-when="guest">
-        <h2>개인 인터넷뱅킹</h2>
-        <p class="muted">로그인하고 조회·이체를 이용하세요.</p>
-        <a class="button primary block large" href="/login/">로그인</a>
-        <ul class="login-links">
-          <li><a href="/find-id/">아이디 찾기</a></li>
-          <li><a href="/find-pw/">비밀번호 재설정</a></li>
-          <li><a href="/join/">회원가입</a></li>
-        </ul>
-      </div>
-      <div data-when="member" hidden>
-        <p class="login-greeting"><strong data-username></strong>님, 안녕하세요.</p>
-        <div class="rep-account" id="rep-account">
-          <p class="rep-label">대표 계좌</p>
-          <p class="loading" id="rep-loading">계좌 정보를 불러오는 중…</p>
-          <p class="form-error" role="alert" hidden></p>
-          <p class="muted" id="rep-empty" hidden>개설된 계좌가 없습니다. <a href="/products/open/">계좌 개설하기</a></p>
-          <div id="rep-detail" hidden>
-            <p class="account-number" id="rep-number"></p>
-            <p class="balance" id="rep-balance"></p>
-            <a class="more" id="rep-history" href="/inquiry/transactions/">거래내역</a>
-          </div>
-        </div>
-        <div class="actions split">
-          <a class="button" href="/inquiry/accounts/">조회</a>
-          <a class="button primary" href="/transfer/instant/">이체</a>
-        </div>
-        <button type="button" class="link-button" data-logout>로그아웃</button>
-      </div>
-    </aside>
-  </div></section>
-
-  <section class="quick-menu" aria-label="자주 쓰는 메뉴"><div class="inner">
-    <ul>
-      <li><a href="/inquiry/accounts/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>계좌조회</a></li>
-      <li><a href="/inquiry/transactions/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h3"/></svg>거래내역</a></li>
-      <li><a href="/transfer/instant/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>즉시이체</a></li>
-      <li><a href="/products/open/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 9v6M9 12h6"/></svg>계좌개설</a></li>
-      <li><a href="/products/deposit/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18M12 3l9 5H3z"/></svg>예금</a></li>
-      <li><a href="/products/savings/"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>적금</a></li>
-      <li><a href="/fx/rates/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z"/></svg>환율조회</a></li>
-      <li><a href="/bills/giro/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>공과금</a></li>
-    </ul>
-  </div></section>
-
-  <section class="home-boards"><div class="inner">
-    <div class="panel home-notice">
-      <div class="panel-head"><h2>공지사항</h2><a class="more" href="/support/notice/">더보기</a></div>
-      <ul class="notice-list">
-<!-- layout:home-notice -->
-<li><a href="/support/notice/">[시연] 인터넷뱅킹 시스템 정기 점검 안내</a><time datetime="2026-09-30">2026.09.30</time></li>
-<li><a href="/support/notice/">전자금융거래 이용약관 개정 안내</a><time datetime="2026-09-24">2026.09.24</time></li>
-<li><a href="/support/notice/">Project 정기예금 우대 금리 이벤트</a><time datetime="2026-09-18">2026.09.18</time></li>
-<li><a href="/support/notice/">개인정보처리방침 변경 사전 안내</a><time datetime="2026-09-10">2026.09.10</time></li>
-<!-- /layout:home-notice -->
-      </ul>
-    </div>
-    <div class="panel home-security">
-      <div class="panel-head"><h2>보안센터</h2><a class="more" href="/security/">더보기</a></div>
-      <p>Project Bank는 전화나 문자로 <strong>비밀번호, OTP 번호</strong>를 요구하지 않습니다.</p>
-      <ul class="link-list">
-        <li><a href="/security/phishing/">피싱·파밍 예방</a></li>
-        <li><a href="/security/report/">금융사고 신고</a></li>
-        <li><a href="/security/program/">보안 프로그램</a></li>
-      </ul>
-    </div>
-    <div class="panel home-products">
-      <div class="panel-head"><h2>추천 상품</h2><a class="more" href="/products/">더보기</a></div>
-      <ul class="link-list">
-        <li><a href="/products/deposit/">Project 정기예금 <span class="muted">최고 연 3.20%</span></a></li>
-        <li><a href="/products/savings/">Project 청년 도약적금 <span class="muted">최고 연 4.00%</span></a></li>
-        <li><a href="/products/loan/">직장인 신용대출 <span class="muted">준비 중</span></a></li>
-      </ul>
-    </div>
-  </div></section>
+<div class="sub-layout inner">
+<!-- layout:lnb -->
+<aside class="lnb" aria-label="금융상품 메뉴">
+<h2 class="lnb-title"><a href="/products/">금융상품</a></h2>
+<ul class="lnb-list">
+<li><a href="/products/deposit/">예금</a></li>
+<li><a href="/products/savings/">적금</a></li>
+<li><a href="/products/fund/" aria-current="page">펀드</a></li>
+<li><a href="/products/loan/">대출</a></li>
+<li><a href="/products/trust/">신탁</a></li>
+<li><a href="/products/insurance/">보험</a></li>
+<li><a href="/products/isa/">ISA</a></li>
+<li><a href="/products/open/">계좌개설</a></li>
+</ul>
+</aside>
+<!-- /layout:lnb -->
+<main class="sub-main" id="main">
+<!-- layout:page-head -->
+<nav class="breadcrumb" aria-label="현재 위치"><ol><li><a href="/">홈</a></li><li><a href="/products/">금융상품</a></li><li aria-current="page">펀드</li></ol></nav>
+<h1 class="page-title">펀드</h1>
+<p class="page-desc">투자 성향에 맞는 펀드를 안내합니다.</p>
+<!-- /layout:page-head -->
+<section class="panel stub-notice">
+<p class="stub-badge">서비스 준비 중</p>
+<h2>펀드 서비스를 준비하고 있습니다</h2>
+<p>더 나은 서비스를 위해 준비 중입니다. 이용에 불편을 드려 죄송합니다.</p>
+<p class="muted">문의: 고객센터 0000-0000 (시연용 가상 번호)</p>
+<div class="actions"><a href="/products/" class="button">금융상품 메뉴로</a><a href="/" class="button primary">홈으로</a></div>
+</section>
 </main>
+</div>
 <!-- layout:footer -->
 <footer class="site-footer">
 <div class="footer-top"><div class="inner">
