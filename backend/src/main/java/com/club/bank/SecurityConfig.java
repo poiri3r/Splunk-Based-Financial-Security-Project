@@ -42,7 +42,11 @@ import java.util.HexFormat;
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .requestCache(c->c.requestCache(new NullRequestCache())) 
             .authorizeHttpRequests(a->a.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
-                .requestMatchers("/api/auth/login","/api/auth/register","/health","/error").permitAll().anyRequest().authenticated()) 
+                .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/v2/terms").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST,"/api/v2/auth/login","/api/v2/auth/register","/api/v2/contact-challenges","/api/v2/contact-challenges/*/verify","/api/v2/recovery/password","/api/v2/recovery/verifications","/api/v2/recovery/login-unlock","/api/v2/demo/inbox").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/v2/savings-products").permitAll()
+                .requestMatchers("/api/auth/**","/api/accounts/**","/api/transfers","/api/deposits").denyAll()
+                .requestMatchers("/health","/error").permitAll().anyRequest().authenticated()) 
             .addFilterBefore(filter,UsernamePasswordAuthenticationFilter.class) 
             .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->{
                 res.setHeader("WWW-Authenticate","Bearer");
@@ -67,27 +71,5 @@ import java.util.HexFormat;
         catch(Exception e) {
             throw new IllegalStateException(e);
         }
-    }
-}
-// @Component: Spring이 필터 객체를 관리한다. extends는 기존 필터 클래스를 상속한다는 뜻.
-@Component class TokenFilter extends OncePerRequestFilter {
-    // DB에서 토큰 해시와 만료 시각을 찾는 도구.
-    private final TokenRepo tokens;
-    // 생성자로 토큰 DB 도구를 주입받는다.
-    TokenFilter(TokenRepo t) {
-        tokens=t;
-    }
-    // @Override는 부모 클래스 메서드를 구현한다는 표시. req는 요청, res는 응답, chain은 다음 처리 단계.
-    @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain) throws java.io.IOException,ServletException {
-        // Authorization 헤더를 읽는다. 예: Bearer 발급받은토큰.
-        String header=req.getHeader("Authorization");
-        // &&는 두 조건이 모두 참일 때. Bearer 접두어 7글자를 substring(7)로 제거한다.
-        // 원본 대신 해시로 DB 조회 → 만료 시각 검사 → 유효하면 사용자 ID를 인증 정보에 저장한다.
-        // ifPresent는 조회 결과가 있을 때만 실행한다. List.of()는 빈 권한 목록이며 현재 역할 구분은 없다.
-        if(header!=null && header.startsWith("Bearer ")) tokens.findById(SecurityConfig.hash(header.substring(7))) 
-            .filter(t->t.expiresAt.isAfter(Instant.now())) 
-            .ifPresent(t->SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(t.user.id,null,java.util.List.of())));
-        // 다음 필터/요청 처리로 진행한다. 토큰이 없거나 만료됐으면 보호된 API 접근은 이후 단계에서 거절된다.
-        chain.doFilter(req,res);
     }
 }
