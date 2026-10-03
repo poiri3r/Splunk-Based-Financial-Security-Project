@@ -1,11 +1,14 @@
-// 토큰 저장·만료 확인·로그아웃·페이지 보호.
-// 로그아웃 API는 없다. 브라우저의 토큰만 지우며, 서버 토큰은 발급 후 8시간까지 유효하다.
+// 토큰 저장·만료 확인·페이지 보호.
+// 서버 세션은 두 가지로 끝난다(작업 요청서 A2): 발급 후 8시간(절대 만료), 마지막 인증 요청 후 10분(유휴 만료).
+// 브라우저는 절대 만료만 알고 있다. 유휴 만료는 서버가 판단하며 layout.js가 GET /api/v2/auth/session으로 표시만 한다.
+// 서버 로그아웃(POST /api/v2/auth/logout)은 api.js를 써야 하므로 layout.js에 있다.
 
 import { ROUTES } from './routes.js';
 
 const TOKEN_KEY = 'token';
 const EXPIRES_AT_KEY = 'expiresAt';
 const USERNAME_KEY = 'username'; // 화면 표시용. 서버가 준 값이 아니라 로그인 폼 입력값이다.
+const NOTICE_KEY = 'pb-notice';
 
 export function saveSession(token, expiresIn, username) {
   sessionStorage.setItem(TOKEN_KEY, token);
@@ -19,7 +22,7 @@ export function clearSession() {
   sessionStorage.removeItem(USERNAME_KEY);
 }
 
-// 유효한 토큰을 돌려준다. 없거나 만료됐으면 세션을 지우고 null.
+// 유효한 토큰을 돌려준다. 없거나 절대 만료가 지났으면 세션을 지우고 null.
 export function getToken() {
   const token = sessionStorage.getItem(TOKEN_KEY);
   const expiresAt = Number(sessionStorage.getItem(EXPIRES_AT_KEY));
@@ -32,6 +35,17 @@ export function getToken() {
 
 export function getUsername() {
   return sessionStorage.getItem(USERNAME_KEY) || '';
+}
+
+// 다음 페이지에 한 번만 보여 줄 안내(예: 서버 로그아웃 확인 실패). 비밀값을 넣지 않는다.
+export function setNotice(text) {
+  sessionStorage.setItem(NOTICE_KEY, text);
+}
+
+export function takeNotice() {
+  const text = sessionStorage.getItem(NOTICE_KEY);
+  sessionStorage.removeItem(NOTICE_KEY);
+  return text;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +84,10 @@ export function requireAuth() {
   return false;
 }
 
-export function logout() {
+// 비밀번호 변경·재설정, PIN 재설정 성공 뒤: 서버가 이미 모든 세션을 폐기했다.
+// 다른 업무 요청을 보내지 않고 브라우저 토큰만 지운 뒤 헤더를 비회원 상태로 바꾼다.
+export function endSessionLocally() {
   clearSession();
-  location.replace(ROUTES.home);
+  document.querySelectorAll('[data-when]').forEach((n) => { n.hidden = n.dataset.when === 'member'; });
+  window.dispatchEvent(new CustomEvent('pb-session-ended'));
 }

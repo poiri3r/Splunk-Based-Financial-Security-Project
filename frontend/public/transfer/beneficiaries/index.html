@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<!-- layout:head -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자주 쓰는 계좌 | Project Bank</title>
+<meta name="pb-auth" content="required">
+<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<script type="module" src="/assets/js/layout.js"></script>
+<!-- /layout:head -->
+<script type="module" src="/assets/js/pages/beneficiaries.js"></script>
+</head>
+<body>
+<!-- layout:header -->
+<a class="skip-link" href="#main">본문 바로가기</a>
+<header class="site-header" id="top">
+<div class="util-bar"><div class="inner">
+<ul class="segment" aria-label="고객 구분">
+<li><a href="/" aria-current="true">개인</a></li>
+<li><a href="/corporate/">기업</a></li>
+</ul>
+<ul class="util-links">
+<li data-when="guest"><a href="/login/">로그인</a></li>
+<li data-when="guest"><a href="/join/">회원가입</a></li>
+<li data-when="member" hidden><span class="util-user"><strong data-username></strong>님</span></li>
+<li data-when="member" hidden class="session-box"><span class="session-timer" data-session-timer title="마지막 요청 후 10분이 지나면 자동 로그아웃됩니다">-</span><button type="button" class="session-extend" data-session-extend>연장</button></li>
+<li data-when="member" hidden><button type="button" class="link-button" data-logout>로그아웃</button></li>
+<li><a href="/support/">고객센터</a></li>
+<li><a href="/security/">보안센터</a></li>
+<li><a href="/sitemap/">사이트맵</a></li>
+</ul>
+</div></div>
+<div class="gnb-bar"><div class="inner">
+<a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
+<button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
+<nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/manage/">계좌 관리</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/transfer/" class="gnb-link" aria-current="true">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/beneficiaries/">자주 쓰는 계좌</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
+<li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
+<li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
+<li class="gnb-item"><a href="/products/" class="gnb-link">금융상품</a><ul class="gnb-sub"><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></li>
+<li class="gnb-item"><a href="/realestate/" class="gnb-link">부동산</a><ul class="gnb-sub"><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></li>
+<li class="gnb-item"><a href="/mypage/" class="gnb-link">마이페이지</a><ul class="gnb-sub"><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/pin-reset/">계좌 비밀번호 재설정</a></li><li><a href="/mypage/recovery-codes/">복구 코드 관리</a></li><li><a href="/mypage/terms/">약관 동의 내역</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></li>
+</ul></nav>
+</div></div>
+</header>
+<!-- /layout:header -->
+<div class="sub-layout inner">
+<!-- layout:lnb -->
+<aside class="lnb" aria-label="이체 메뉴">
+<h2 class="lnb-title"><a href="/transfer/">이체</a></h2>
+<ul class="lnb-list">
+<li><a href="/transfer/instant/">즉시이체</a></li>
+<li><a href="/transfer/beneficiaries/" aria-current="page">자주 쓰는 계좌</a></li>
+<li><a href="/transfer/reserved/">예약이체</a></li>
+<li><a href="/transfer/auto/">자동이체</a></li>
+<li><a href="/transfer/result/">이체결과조회</a></li>
+<li><a href="/transfer/limit/">이체한도 조회·변경</a></li>
+<li><a href="/deposit-sim/">시연용 가상 입금</a></li>
+</ul>
+</aside>
+<!-- /layout:lnb -->
+<main class="sub-main narrow" id="main">
+<!-- layout:page-head -->
+<nav class="breadcrumb" aria-label="현재 위치"><ol><li><a href="/">홈</a></li><li><a href="/transfer/">이체</a></li><li aria-current="page">자주 쓰는 계좌</li></ol></nav>
+<h1 class="page-title">자주 쓰는 계좌</h1>
+<p class="page-desc">자주 보내는 계좌를 등록하고 관리합니다.</p>
+<!-- /layout:page-head -->
+  <section class="panel">
+    <h2 class="section-title">계좌 등록</h2>
+    <form id="add-form" novalidate>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="form-grid">
+        <div class="field">
+          <label for="b-number">계좌번호 (Project Bank)</label>
+          <input id="b-number" name="accountNumber" type="text" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="숫자 10~20자리">
+          <p class="field-error" data-error-for="accountNumber"></p>
+        </div>
+        <div class="field">
+          <label for="b-alias">별명 (선택)</label>
+          <input id="b-alias" name="alias" type="text" maxlength="50" autocomplete="off">
+          <p class="field-error" data-error-for="alias"></p>
+        </div>
+      </div>
+      <button type="submit" class="button primary">등록</button>
+    </form>
+    <p class="muted small">최대 100개까지 등록할 수 있습니다. 이체할 때 선택하면 받는 계좌를 서버에서 다시 확인합니다.</p>
+  </section>
+
+  <section class="panel" id="list-section">
+    <h2 class="section-title">등록한 계좌 <span class="muted" id="b-count"></span></h2>
+    <p class="form-error" role="alert" hidden></p>
+    <p class="loading" id="b-loading">불러오는 중…</p>
+    <p class="empty-state" id="b-empty" hidden>등록한 계좌가 없습니다.</p>
+    <ul class="account-list" id="b-list"></ul>
+  </section>
+</main>
+</div>
+<!-- layout:footer -->
+<footer class="site-footer">
+<div class="footer-top"><div class="inner">
+<ul class="footer-links">
+<li><a href="/terms/">이용약관</a></li>
+<li class="strong"><a href="/privacy/">개인정보처리방침</a></li>
+<li><a href="/guide/e-finance/">전자금융거래 이용안내</a></li>
+<li><a href="/security/">보안센터</a></li>
+<li><a href="/support/">고객센터</a></li>
+<li><a href="/sitemap/">사이트맵</a></li>
+</ul>
+</div></div>
+<div class="inner">
+<nav class="footer-menu" aria-label="전체 메뉴">
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/manage/">계좌 관리</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/beneficiaries/">자주 쓰는 계좌</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
+<div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>
+<div class="footer-col"><h2><a href="/products/">금융상품</a></h2><ul><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></div>
+<div class="footer-col"><h2><a href="/realestate/">부동산</a></h2><ul><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></div>
+<div class="footer-col"><h2><a href="/mypage/">마이페이지</a></h2><ul><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/pin-reset/">계좌 비밀번호 재설정</a></li><li><a href="/mypage/recovery-codes/">복구 코드 관리</a></li><li><a href="/mypage/terms/">약관 동의 내역</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></div>
+</nav>
+<div class="footer-info">
+<p class="footer-demo"><strong>시연용 가상 은행</strong> Project Bank는 보안 관제 프로젝트를 위해 만든 가상의 은행이며 실제 금융기관이 아닙니다. 실제 금융 정보나 개인정보를 입력하지 마세요.</p>
+<p>고객센터 0000-0000 (시연용 가상 번호) · © 2026 Project Bank (Demo)</p>
+</div>
+</div>
+</footer>
+<nav class="quickbar" aria-label="퀵메뉴">
+<p class="quickbar-title">QUICK</p>
+<ul><li><a href="/inquiry/accounts/">계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역</a></li><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/fx/rates/">환율조회</a></li><li><a href="/support/">고객센터</a></li></ul>
+<a class="quickbar-top" href="#top">TOP</a>
+</nav>
+<!-- /layout:footer -->
+</body>
+</html>

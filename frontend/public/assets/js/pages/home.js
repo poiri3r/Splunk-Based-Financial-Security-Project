@@ -1,8 +1,8 @@
-// 메인: 배너 슬라이드, 로그인 상태면 대표 계좌(목록의 첫 계좌) 요약.
+// 메인: 배너 슬라이드, 로그인 상태면 대표 계좌(목록의 첫 정상 입출금 계좌) 요약.
 // 로그인 박스의 비회원/회원 전환 자체는 layout.js가 한다.
 import { getToken } from '../session.js';
 import { formatAmount } from '../format.js';
-import { showApiError, transactionsLink } from '../ui.js';
+import { showApiError, transactionsLink, isDebitCandidate } from '../ui.js';
 
 setupSlider(document.querySelector('[data-slider]'));
 if (getToken()) loadRepresentativeAccount();
@@ -13,15 +13,14 @@ async function loadRepresentativeAccount() {
   const box = document.getElementById('rep-account');
   const loading = document.getElementById('rep-loading');
   try {
-    const accounts = await api.listAccounts();
-    if (accounts.length === 0) {
+    const first = (await api.listAccounts()).items.find(isDebitCandidate);
+    if (!first) {
       document.getElementById('rep-empty').hidden = false;
       return;
     }
-    const [first] = accounts;
-    document.getElementById('rep-number').textContent = first.number;
+    document.getElementById('rep-number').textContent = `${first.preferences?.alias || first.accountName} ${first.number}`;
     document.getElementById('rep-balance').textContent = formatAmount(first.balance);
-    document.getElementById('rep-history').href = transactionsLink(first.number);
+    document.getElementById('rep-history').href = transactionsLink(first.accountId);
     document.getElementById('rep-detail').hidden = false;
   } catch (err) {
     showApiError(box, err);

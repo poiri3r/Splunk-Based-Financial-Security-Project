@@ -1,4 +1,5 @@
 // 부동산 시세조회: 지역별 임시 시세(정적 JSON) + 카카오맵.
+// 백엔드 v6에는 시세 API가 없다(작업 요청서 R7, 추가 협의 C4). /api/realestate/... 같은 가안 API를 호출하지 않는다.
 // KAKAO_MAP_KEY가 없거나 지도 로드에 실패하면 목록·상세만으로 동작한다.
 // 지도 위 표시는 HTML 문자열이 아니라 DOM 노드로 만든다(textContent 원칙 유지).
 import { KAKAO_MAP_KEY } from '../config.js';

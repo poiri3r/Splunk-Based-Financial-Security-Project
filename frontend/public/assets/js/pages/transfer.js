@@ -1,30 +1,37 @@
+// 즉시이체 (작업 요청서 A3·A8·R8, 흐름도 F6·F13).
+// 1) 입력 → 수취 계좌 확인(receiver-validation) → 서버 확인 건(preview, 5분) 생성
+// 2) 확인 화면은 입력값이 아니라 서버 preview 응답을 그린다 → 로그인 비밀번호·계좌 비밀번호로 승인(step-up) → actionToken
+// 3) 멱등키로 실행. 결과가 불확실하면 승인을 새로 받지 않고 같은 키·같은 본문으로 다시 보낸다.
+// 입력을 바꾸면 새 preview와 새 승인이 필요하다. preview는 잔액을 예약하지 않으므로 실행 때 서버가 다시 검사한다.
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
-import { parseAmount, validateAccountNumber } from '../validate.js';
-import { formatAmount } from '../format.js';
+import { parseAmount, validateAccountNumber, validatePinFormat } from '../validate.js';
+import { formatAmount, formatDateTime, formatRemaining } from '../format.js';
 import {
-  clearErrors, showFieldError, showFormError, showApiError, setBusy, el,
-  transactionsLink, MSG_ACCOUNT_NOT_FOUND,
+  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, guardUnload, setDisabled,
+  transactionsLink, transferResultLink, accountLabel, isDebitCandidate,
 } from '../ui.js';
 
 if (requireAuth()) init();
 
 function init() {
-  const steps = Object.fromEntries(
-    [...document.querySelectorAll('[data-step]')].map((node) => [node.dataset.step, node]),
-  );
+  const steps = Object.fromEntries([...document.querySelectorAll('[data-step]')].map((node) => [node.dataset.step, node]));
   const stepLabels = document.querySelectorAll('[data-step-label]');
   const form = document.getElementById('transfer-form');
-  const fromSelect = form.fromAccount;
+  const fromSelect = form.fromAccountId;
   const fromBalance = document.getElementById('from-balance');
   const nextButton = form.querySelector('button[type="submit"]');
+  const approveForm = document.getElementById('approve-form');
   const sendButton = document.getElementById('send-transfer');
   const editButton = document.getElementById('edit-transfer');
   const uncertainBox = document.getElementById('transfer-uncertain');
+  const timerNode = document.getElementById('confirm-timer');
 
-  let myAccounts = []; // [{ number, balance }] — 서버가 준 값만 보관한다
-  let tx = null; // 확인 단계에서 만든 거래 한 건(멱등키 + 고정 본문)
-  let draft = null; // 확인 중인 입력값 { fromAccount, toAccount, amount }
+  let myAccounts = []; // 서버 계좌 상세. 잔액은 계산하지 않고 조회 값만 쓴다.
+  let preview = null; // 서버 확인 건 { previewId, details, amount, fee, expiresAt }
+  let actionToken = null; // 이 preview에 대한 승인 권한
+  let tx = null; // 실행 요청 한 건(멱등키 + 고정 본문)
+  let timer = null;
 
   function showStep(name) {
     for (const [key, node] of Object.entries(steps)) node.hidden = key !== name;
@@ -32,157 +39,237 @@ function init() {
   }
 
   function renderFromBalance() {
-    const account = myAccounts.find((a) => a.number === fromSelect.value);
-    fromBalance.textContent = account ? `잔액 ${formatAmount(account.balance)}` : '';
+    const a = myAccounts.find((x) => x.accountId === fromSelect.value);
+    fromBalance.textContent = a ? `잔액 ${formatAmount(a.balance)} · 출금 가능액 ${formatAmount(a.availableBalance)}` : '';
   }
-
-  // 잔액은 계산하지 않고 항상 조회 API 값으로 바꾼다.
-  async function refreshBalance(number) {
-    const res = await api.getBalance(number);
-    const account = myAccounts.find((a) => a.number === number);
-    if (account) account.balance = res.balance;
-    return res.balance;
-  }
-
-  // ---- 1. 입력 ------------------------------------------------------------
-
   fromSelect.addEventListener('change', renderFromBalance);
 
-  form.addEventListener('submit', (event) => {
+  async function refreshAccount(accountId) {
+    const detail = await api.getAccount(accountId);
+    const i = myAccounts.findIndex((a) => a.accountId === accountId);
+    if (i >= 0) myAccounts[i] = detail;
+    renderFromBalance();
+  }
+
+  // 확인 건을 버리고 입력 단계로 돌아간다. 결과 불명인 실행이 있으면 돌아가지 않는다.
+  function backToInput(message) {
+    if (tx?.pending) return;
+    preview = null;
+    actionToken = null;
+    tx = null;
+    clearInterval(timer);
+    approveForm.reset();
+    showStep('input');
+    clearErrors(form);
+    if (message) showFormError(form, message);
+  }
+
+  // ---- 1. 입력 → preview --------------------------------------------------
+
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearErrors(form);
-    const fromAccount = fromSelect.value;
-    const toAccount = form.toAccount.value.trim();
-
-    if (!fromAccount) return showFieldError(form, 'fromAccount', '출금 계좌를 선택해 주세요.');
-    const toError = validateAccountNumber(toAccount);
-    if (toError) return showFieldError(form, 'toAccount', toError);
-    if (toAccount === fromAccount) {
-      return showFieldError(form, 'toAccount', '출금 계좌와 같은 계좌로는 이체할 수 없습니다.');
+    const fromAccountId = fromSelect.value;
+    const toAccountNumber = form.toAccountNumber.value.trim().replace(/-/g, '');
+    const memo = form.memo.value.trim();
+    if (!fromAccountId) return showFieldError(form, 'fromAccountId', '출금 계좌를 선택해 주세요.');
+    const toError = validateAccountNumber(toAccountNumber);
+    if (toError) return showFieldError(form, 'toAccountNumber', toError);
+    const from = myAccounts.find((a) => a.accountId === fromAccountId);
+    if (from && from.number === toAccountNumber) {
+      return showFieldError(form, 'toAccountNumber', '출금 계좌와 같은 계좌로는 이체할 수 없습니다.');
     }
     const { value: amount, error } = parseAmount(form.amount.value);
     if (error) return showFieldError(form, 'amount', error);
 
-    // 확인 단계로 넘어가는 시점에 키를 만들고 본문을 고정한다.
-    draft = { fromAccount, toAccount, amount };
-    tx = api.newTransfer(fromAccount, toAccount, amount);
+    setBusy(nextButton, true, '확인 중…');
+    try {
+      await api.validateReceiver(toAccountNumber); // 수취 계좌 존재·상태 확인
+      preview = await api.createPreview({ fromAccountId, toAccountNumber, amount, memo: memo || null });
+    } catch (err) {
+      showApiError(form, err, {
+        ACCOUNT_NOT_FOUND: { field: 'toAccountNumber', message: '받는 계좌를 찾을 수 없습니다. 계좌번호를 확인해 주세요.' },
+        ACCOUNT_UNAVAILABLE: { field: 'toAccountNumber', message: '받을 수 없는 계좌입니다(해지 등).' },
+        SAME_ACCOUNT: { field: 'toAccountNumber', message: '출금 계좌와 같은 계좌로는 이체할 수 없습니다.' },
+        PRODUCT_ACCOUNT_RESTRICTED: { message: '입출금 계좌 사이에서만 이체할 수 있습니다. 예금·적금 계좌는 상품 상세에서 처리해 주세요.' },
+      });
+      return;
+    } finally {
+      setBusy(nextButton, false);
+    }
+    showConfirm();
+  });
 
-    document.getElementById('confirm-from').textContent = fromAccount;
-    const isMine = myAccounts.some((a) => a.number === toAccount);
-    document.getElementById('confirm-to').textContent = isMine ? `${toAccount} (내 계좌)` : toAccount;
-    document.getElementById('confirm-amount').textContent = formatAmount(amount);
-    clearErrors(steps.confirm);
-    uncertainBox.hidden = true;
-    sendButton.textContent = '이체하기';
+  // ---- 2. 확인·승인 → 실행 -------------------------------------------------
+
+  function showConfirm() {
+    const d = preview.details;
+    document.getElementById('confirm-from').textContent = d.fromAccountNumber;
+    const mine = myAccounts.some((a) => a.number === d.toAccountNumber);
+    document.getElementById('confirm-to').textContent = mine ? `${d.toAccountNumber} (내 계좌)` : d.toAccountNumber;
+    document.getElementById('confirm-name').textContent = d.receiverName;
+    document.getElementById('confirm-amount').textContent = formatAmount(preview.amount);
+    document.getElementById('confirm-fee').textContent = formatAmount(preview.fee);
+    document.getElementById('confirm-memo').textContent = d.memo || '없음';
+    clearErrors(approveForm);
+    approveForm.reset();
+    actionToken = null;
+    tx = null;
+    lockConfirm(false);
+    const expiresAt = Date.parse(preview.expiresAt);
+    const tick = () => {
+      const left = expiresAt - Date.now();
+      if (left <= 0 && !tx?.pending) return backToInput('확인 시간(5분)이 지났습니다. 내용을 확인하고 다시 진행해 주세요.');
+      timerNode.textContent = left > 0 ? `${formatRemaining(left)} 안에 승인해 주세요.` : '';
+    };
+    clearInterval(timer);
+    timer = setInterval(tick, 1000);
+    tick();
     showStep('confirm');
-    sendButton.focus();
-  });
+    approveForm.password.focus();
+  }
 
-  // ---- 2. 확인 ------------------------------------------------------------
+  // 결과 불명 중에는 수정·승인 입력을 막고 같은 요청으로만 다시 보낸다.
+  function lockConfirm(locked) {
+    setDisabled([editButton, approveForm.password, approveForm.pin], locked);
+    uncertainBox.hidden = !locked;
+    guardUnload(locked);
+    sendButton.textContent = locked ? '같은 내용으로 다시 시도' : '이체하기';
+  }
 
-  // 수정하면 기존 거래(키)를 버린다. 다시 확인하면 새 키가 만들어진다.
-  editButton.addEventListener('click', () => {
-    tx = null;
-    showStep('input');
-  });
+  editButton.addEventListener('click', () => backToInput());
 
-  // 송금 실패(4xx)를 입력 단계에 표시한다. 키는 이미 폐기됐다.
-  async function showRejected(err) {
-    tx = null;
-    showStep('input');
-    clearErrors(form);
-    switch (err.code) {
-      case 'SAME_ACCOUNT':
-        showFieldError(form, 'toAccount', err.message);
-        return;
-      case 'ACCOUNT_NOT_FOUND':
-        // 어느 계좌 문제인지 알 수 없으므로 통합 안내한다(field 제공 여부 미정).
-        showFormError(form, MSG_ACCOUNT_NOT_FOUND);
-        return;
-      case 'INSUFFICIENT_BALANCE':
-        showFormError(form, err.message);
-        try {
-          await refreshBalance(draft.fromAccount);
-          renderFromBalance();
-        } catch (e) {
-          showApiError(form, e);
-        }
-        return;
-      default:
-        showApiError(form, err);
+  async function approve() {
+    const password = approveForm.password.value;
+    const pin = approveForm.pin.value;
+    if (!password) { showFieldError(approveForm, 'password', '로그인 비밀번호를 입력해 주세요.'); return false; }
+    const pinError = validatePinFormat(pin);
+    if (pinError) { showFieldError(approveForm, 'pin', pinError); return false; }
+    try {
+      const res = await api.stepUp({ purpose: 'TRANSFER', targetId: preview.previewId, password, pin });
+      actionToken = res.actionToken;
+      approveForm.password.value = '';
+      approveForm.pin.value = '';
+      return true;
+    } catch (err) {
+      switch (err.code) {
+        case 'PREVIEW_EXPIRED':
+        case 'TRANSFER_NOT_FOUND':
+          backToInput('확인 건이 만료되었습니다. 다시 진행해 주세요.');
+          return false;
+        case 'PREVIEW_ALREADY_USED':
+          backToInput('이미 실행된 확인 건입니다. 이체결과조회에서 결과를 확인해 주세요.');
+          return false;
+        default:
+          showApiError(approveForm, err, {
+            REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
+            PIN_INVALID: { field: 'pin', message: '계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.' },
+            RATE_LIMITED: { message: '승인 요청이 너무 많습니다. 5분 뒤 다시 시도해 주세요.' },
+          });
+          return false;
+      }
     }
   }
 
-  sendButton.addEventListener('click', async () => {
-    if (!tx) return;
-    clearErrors(steps.confirm);
-    uncertainBox.hidden = true;
+  approveForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!preview) return;
+    clearErrors(approveForm);
     setBusy(sendButton, true, '이체 중…');
     editButton.disabled = true;
     try {
+      if (!tx) {
+        if (!actionToken && !(await approve())) return;
+        tx = api.newTransferExecution(preview.previewId, actionToken);
+      }
       const res = await tx.submit();
-      tx = null;
+      lockConfirm(false);
       await showResult(res);
     } catch (err) {
       if (err.uncertain) {
-        // 키와 본문을 유지한다. 다시 누르면 같은 키로 보낸다.
-        document.getElementById('transfer-history').href = transactionsLink(draft.fromAccount);
-        uncertainBox.hidden = false;
-        setBusy(sendButton, false);
-        sendButton.textContent = '같은 내용으로 다시 시도';
-      } else if (!err.handled) {
-        await showRejected(err);
+        lockConfirm(true);
+        return;
       }
+      tx = null;
+      lockConfirm(false);
+      if (!err.handled) await showRejected(err);
     } finally {
-      if (sendButton.disabled) setBusy(sendButton, false);
-      editButton.disabled = false;
+      setBusy(sendButton, false);
+      if (tx?.pending) sendButton.textContent = '같은 내용으로 다시 시도';
+      editButton.disabled = Boolean(tx?.pending);
     }
   });
+
+  // 실행 거절(4xx). 키는 이미 폐기됐다.
+  async function showRejected(err) {
+    switch (err.code) {
+      case 'ACTION_TOKEN_INVALID':
+        // 승인 만료·계좌 보안 설정 변경. 같은 확인 건으로 다시 승인받는다.
+        actionToken = null;
+        showFormError(approveForm, '승인이 만료되었거나 계좌 보안 설정이 바뀌었습니다. 비밀번호를 다시 입력해 주세요.');
+        return;
+      case 'PREVIEW_EXPIRED':
+        backToInput('확인 시간이 지났습니다. 다시 진행해 주세요.');
+        return;
+      case 'PREVIEW_ALREADY_USED':
+        backToInput('이미 실행된 확인 건입니다. 이체결과조회에서 결과를 확인해 주세요.');
+        return;
+      default: {
+        const fromAccountId = fromSelect.value;
+        backToInput();
+        showApiError(form, err);
+        // 잔액·한도 거절이면 최신 잔액을 다시 보여 준다.
+        try { await refreshAccount(fromAccountId); } catch (e) { if (!e.handled) console.warn('[transfer] 잔액 재조회 실패'); }
+      }
+    }
+  }
 
   // ---- 3. 결과 ------------------------------------------------------------
 
   async function showResult(res) {
-    const resultStep = steps.result;
-    clearErrors(resultStep);
+    clearInterval(timer);
+    const fromAccountId = preview.details.fromAccountId;
+    preview = null;
+    actionToken = null;
+    tx = null;
     document.getElementById('result-id').textContent = res.transferId;
-    document.getElementById('result-status').textContent = res.status;
-    document.getElementById('result-amount').textContent = formatAmount(draft.amount);
-    document.getElementById('result-history').href = transactionsLink(draft.fromAccount);
-    const list = document.getElementById('result-balances');
-    list.replaceChildren();
+    document.getElementById('result-time').textContent = formatDateTime(res.createdAt);
+    document.getElementById('result-to').textContent = `${res.details.toAccountNumber} (${res.details.receiverName})`;
+    document.getElementById('result-amount').textContent = formatAmount(res.amount);
+    document.getElementById('result-balance').textContent = formatAmount(res.balanceAfter);
+    document.getElementById('result-detail').href = transferResultLink(res.transferId);
+    document.getElementById('result-history').href = transactionsLink(fromAccountId);
     showStep('result');
-
-    // 출금 계좌는 항상, 받는 계좌는 내 계좌일 때만 재조회한다(타인 계좌는 404).
-    const targets = [draft.fromAccount];
-    if (myAccounts.some((a) => a.number === draft.toAccount)) targets.push(draft.toAccount);
-    for (const number of targets) {
-      try {
-        const balance = await refreshBalance(number);
-        list.append(el('li', {}, [
-          el('span', { className: 'account-number', textContent: number }),
-          el('span', { className: 'balance', textContent: formatAmount(balance) }),
-        ]));
-      } catch (err) {
-        showApiError(resultStep, err);
-      }
-    }
-    renderFromBalance();
+    // 이미 성공한 이체다. 잔액 재조회가 실패해도 결과를 바꾸지 않는다.
+    try { await refreshAccount(fromAccountId); } catch (e) { if (!e.handled) console.warn('[transfer] 잔액 재조회 실패'); }
   }
 
   document.getElementById('new-transfer').addEventListener('click', () => {
-    form.toAccount.value = '';
+    form.toAccountNumber.value = '';
     form.amount.value = '';
-    clearErrors(form);
-    draft = null;
-    showStep('input');
+    form.memo.value = '';
+    backToInput();
   });
 
   // ---- 시작 ---------------------------------------------------------------
 
+  async function loadBeneficiaries() {
+    try {
+      const { items } = await api.listBeneficiaries();
+      if (items.length === 0) return;
+      const select = document.getElementById('beneficiary');
+      select.append(...items.map((b) => el('option', { value: b.accountNumber, textContent: `${b.alias || '별명 없음'} ${b.accountNumber}` })));
+      select.addEventListener('change', () => { if (select.value) form.toAccountNumber.value = select.value; });
+      document.getElementById('beneficiary-field').hidden = false;
+    } catch (err) {
+      if (!err.handled) console.warn('[transfer] 자주 쓰는 계좌를 불러오지 못했습니다.');
+    }
+  }
+
   async function load() {
     const loading = document.getElementById('transfer-loading');
     try {
-      myAccounts = await api.listAccounts();
+      myAccounts = (await api.listAccounts()).items;
     } catch (err) {
       const box = document.getElementById('load-error');
       box.hidden = false;
@@ -191,15 +278,17 @@ function init() {
     } finally {
       loading.hidden = true;
     }
-    if (myAccounts.length === 0) {
+    const candidates = myAccounts.filter(isDebitCandidate);
+    if (candidates.length === 0) {
       document.getElementById('no-accounts').hidden = false;
       return;
     }
-    fromSelect.replaceChildren(...myAccounts.map((a) => el('option', { value: a.number, textContent: a.number })));
+    fromSelect.replaceChildren(...candidates.map((a) => el('option', { value: a.accountId, textContent: accountLabel(a) })));
     const preset = new URLSearchParams(location.search).get('from');
-    if (preset && myAccounts.some((a) => a.number === preset)) fromSelect.value = preset;
+    if (preset && candidates.some((a) => a.accountId === preset)) fromSelect.value = preset;
     renderFromBalance();
     showStep('input');
+    loadBeneficiaries();
   }
 
   load();

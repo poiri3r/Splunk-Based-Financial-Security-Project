@@ -20,10 +20,12 @@ export const CATEGORIES = [
     desc: '보유 계좌와 거래내역을 조회합니다.',
     children: [
       { title: '전체계좌조회', path: '/inquiry/accounts', status: 'live', auth: true, desc: '보유한 모든 계좌의 잔액을 확인합니다.' },
-      { title: '거래내역조회', path: '/inquiry/transactions', status: 'live', auth: true, desc: '계좌별 입출금 내역을 확인합니다.' },
+      { title: '거래내역조회', path: '/inquiry/transactions', status: 'live', auth: true, desc: '계좌별 입출금 내역을 기간·구분별로 확인합니다.' },
+      { title: '계좌 관리', path: '/inquiry/manage', status: 'live', auth: true, desc: '계좌 별명·숨김·순서, 출금 등록, 계좌 비밀번호를 관리합니다.' },
       { title: '카드이용내역', path: '/inquiry/card', status: 'stub', stub: 'inquiry', auth: true, desc: '체크·신용카드 이용 내역을 조회합니다.' },
       { title: '대출조회', path: '/inquiry/loan', status: 'stub', stub: 'inquiry', auth: true, desc: '대출 잔액과 이자 납입 내역을 조회합니다.' },
       { title: '예금·적금 가입내역', path: '/inquiry/products', status: 'live', auth: true, desc: '가입한 예금·적금 상품을 확인합니다.' },
+      { title: '예금·적금 상세', path: '/inquiry/products/detail', status: 'live', auth: true, nav: false, desc: '가입 상세, 적금 납입, 해지를 처리합니다.' },
       { title: '해지계좌조회', path: '/inquiry/closed', status: 'stub', stub: 'inquiry', auth: true, desc: '해지된 계좌의 과거 내역을 조회합니다.' },
       { title: '수표조회', path: '/inquiry/check', status: 'stub', stub: 'inquiry', desc: '자기앞수표의 정상 발행 여부를 확인합니다.' },
     ],
@@ -33,10 +35,11 @@ export const CATEGORIES = [
     desc: '계좌이체와 예약·자동이체를 이용합니다.',
     children: [
       { title: '즉시이체', path: '/transfer/instant', status: 'live', auth: true, desc: '다른 계좌로 바로 이체합니다.' },
+      { title: '자주 쓰는 계좌', path: '/transfer/beneficiaries', status: 'live', auth: true, desc: '자주 보내는 계좌를 등록하고 관리합니다.' },
       { title: '예약이체', path: '/transfer/reserved', status: 'stub', auth: true, desc: '지정한 날짜와 시각에 이체합니다.' },
       { title: '자동이체', path: '/transfer/auto', status: 'stub', auth: true, desc: '정해진 날짜마다 같은 금액을 이체합니다.' },
-      { title: '이체결과조회', path: '/transfer/result', status: 'stub', stub: 'inquiry', auth: true, desc: '처리된 이체의 결과를 확인합니다.' },
-      { title: '이체한도 조회·변경', path: '/transfer/limit', status: 'stub', auth: true, desc: '1회·1일 이체한도를 확인하고 변경합니다.' },
+      { title: '이체결과조회', path: '/transfer/result', status: 'live', auth: true, desc: '보낸 이체의 처리 결과를 확인합니다.' },
+      { title: '이체한도 조회·변경', path: '/transfer/limit', status: 'live', auth: true, desc: '1회·1일 이체한도와 오늘 사용량을 확인하고 한도를 줄입니다.' },
       { title: '시연용 가상 입금', path: '/deposit-sim', status: 'live', auth: true, desc: '시연을 위해 내 계좌에 가상 금액을 입금합니다. 실제 입금이 아닙니다.' },
     ],
   },
@@ -64,7 +67,7 @@ export const CATEGORIES = [
     title: '금융상품', path: '/products', gnb: true,
     desc: '예금, 적금, 대출 등 금융상품을 안내합니다.',
     children: [
-      // 상품 데이터는 public/assets/js/data/products.js (백엔드 상품 API가 생기면 교체)
+      // 예금·적금 상품은 백엔드 GET /api/v2/savings-products(공개)에서 읽는다.
       { title: '예금', path: '/products/deposit', status: 'live', desc: '목돈을 맡기고 이자를 받는 상품입니다.' },
       { title: '적금', path: '/products/savings', status: 'live', desc: '매월 일정 금액을 모으는 상품입니다.' },
       { title: '상품 가입', path: '/products/join', status: 'live', auth: true, nav: false, desc: '예금·적금 상품에 가입합니다.' },
@@ -91,8 +94,12 @@ export const CATEGORIES = [
     children: [
       { title: '내 정보 조회·변경', path: '/mypage/profile', status: 'live', auth: true, desc: '이름, 연락처 등 내 정보를 확인하고 변경합니다.' },
       { title: '비밀번호 변경', path: '/mypage/password', status: 'live', auth: true, desc: '로그인 비밀번호를 변경합니다.' },
-      { title: '접속 기록', path: '/mypage/login-history', status: 'live', auth: true, desc: '최근 로그인 일시와 접속 환경을 확인합니다.' },
-      { title: '회원탈퇴', path: '/mypage/withdraw', status: 'live', auth: true, desc: '인터넷뱅킹 서비스를 해지합니다.' },
+      { title: '계좌 비밀번호 재설정', path: '/mypage/pin-reset', status: 'live', auth: true, desc: '잊어버렸거나 잠긴 계좌 비밀번호를 다시 설정합니다.' },
+      { title: '복구 코드 관리', path: '/mypage/recovery-codes', status: 'live', auth: true, desc: '계정 복구에 쓰는 일회용 복구 코드를 발급합니다.' },
+      { title: '약관 동의 내역', path: '/mypage/terms', status: 'live', auth: true, desc: '가입할 때 동의한 약관과 버전을 확인합니다.' },
+      // 접속 기록·회원탈퇴는 백엔드 v6에 없다(추가 협의 C4: 후속 범위). API 계약이 생기면 live로 되돌린다.
+      { title: '접속 기록', path: '/mypage/login-history', status: 'stub', auth: true, planned: 'C4 후속 범위', desc: '최근 로그인 일시와 접속 환경을 확인합니다.' },
+      { title: '회원탈퇴', path: '/mypage/withdraw', status: 'stub', auth: true, planned: 'C4 후속 범위', desc: '인터넷뱅킹 서비스를 해지합니다.' },
     ],
   },
   {
@@ -149,6 +156,7 @@ export const STANDALONE = [
   { title: '회원가입', path: '/join', layout: 'plain', status: 'live' },
   { title: '아이디 찾기', path: '/find-id', layout: 'plain', status: 'live' },
   { title: '비밀번호 재설정', path: '/find-pw', layout: 'plain', status: 'live' },
+  { title: '로그인 잠금 해제', path: '/login-unlock', layout: 'plain', status: 'live' },
   { title: '기업뱅킹', path: '/corporate', layout: 'plain', status: 'stub' },
   { title: '사이트맵', path: '/sitemap', layout: 'plain', status: 'stub', stub: 'sitemap' },
 ];

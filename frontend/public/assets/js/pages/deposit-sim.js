@@ -1,10 +1,14 @@
-// 시연용 가상 입금. 동작은 기존 내 계좌 화면의 입금 부분과 같다.
-// 결과가 불확실하면 입력을 바꾸지 않는 한 같은 거래(같은 멱등키)로 다시 보낸다.
+// 시연용 가상 입금 (demo 프로필 전용 POST /api/v2/demo/deposits). 본인 정상 입출금 계좌에만 들어간다.
+// 요청은 계좌번호(number)로 보내고, 잔액 재조회는 계좌 UUID로 한다.
+// 결과가 불확실하면 같은 거래(같은 멱등키)로만 다시 보낸다. 그동안 계좌·금액 입력은 잠근다.
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import { parseAmount } from '../validate.js';
 import { formatAmount } from '../format.js';
-import { clearErrors, showFieldError, showApiError, setBusy, el, transactionsLink } from '../ui.js';
+import {
+  clearErrors, showFieldError, showApiError, setBusy, el, guardUnload, setDisabled,
+  transactionsLink, accountLabel, isDebitCandidate,
+} from '../ui.js';
 
 if (requireAuth()) init();
 
@@ -13,7 +17,7 @@ function init() {
   const loading = document.getElementById('deposit-loading');
   const noAccounts = document.getElementById('no-accounts');
   const form = document.getElementById('deposit-form');
-  const select = form.accountNumber;
+  const select = form.accountId;
   const balanceHint = document.getElementById('deposit-balance');
   const submit = form.querySelector('button[type="submit"]');
   const uncertainBox = document.getElementById('deposit-uncertain');
@@ -21,70 +25,74 @@ function init() {
   const historyLink = document.getElementById('deposit-history');
   const resultBox = document.getElementById('deposit-result');
 
-  const balances = new Map(); // 계좌번호 → 서버가 준 잔액
-  let pendingTx = null; // 결과가 불확실한 입금. 입력을 바꾸기 전까지 같은 키로 재시도한다.
+  let accounts = []; // 서버 계좌 상세
+  let pendingTx = null; // 결과가 불확실한 입금
+
+  const current = () => accounts.find((a) => a.accountId === select.value);
 
   function renderBalance() {
-    const balance = balances.get(select.value);
-    balanceHint.textContent = balance === undefined ? '' : `현재 잔액 ${formatAmount(balance)}`;
+    const a = current();
+    balanceHint.textContent = a ? `현재 잔액 ${formatAmount(a.balance)}` : '';
+  }
+  select.addEventListener('change', renderBalance);
+
+  function setPending(tx) {
+    pendingTx = tx;
+    const pending = Boolean(tx);
+    setDisabled([select, form.amount, submit], pending);
+    uncertainBox.hidden = !pending;
+    guardUnload(pending);
   }
 
-  function discardPending() {
-    pendingTx = null;
-    uncertainBox.hidden = true;
-  }
-  select.addEventListener('change', () => { discardPending(); renderBalance(); });
-  form.amount.addEventListener('input', discardPending);
-
-  async function refreshBalance(number) {
+  async function refreshBalance(accountId) {
     try {
-      const res = await api.getBalance(number);
-      balances.set(number, res.balance);
+      const detail = await api.getAccount(accountId);
+      accounts = accounts.map((a) => (a.accountId === accountId ? detail : a));
       renderBalance();
     } catch (err) {
-      showApiError(form, err);
+      // 이미 성공한 입금이다. 잔액 재조회 실패를 입금 실패로 바꾸지 않는다.
+      if (!err.handled) balanceHint.textContent = '잔액을 다시 불러오지 못했습니다. 새로고침해 주세요.';
     }
   }
 
-  async function submitDeposit(tx, number) {
+  async function submitDeposit(tx, accountId) {
     clearErrors(form);
     resultBox.hidden = true;
-    uncertainBox.hidden = true;
     setBusy(submit, true);
     retryButton.disabled = true;
     try {
-      const res = await tx.submit();
-      pendingTx = null;
+      const res = await tx.submit(); // { depositId, status, source }
+      setPending(null);
       resultBox.textContent = `가상 입금이 완료되었습니다. (거래 ID: ${res.depositId})`;
       resultBox.hidden = false;
       form.amount.value = '';
-      await refreshBalance(number);
+      await refreshBalance(accountId);
     } catch (err) {
       if (err.uncertain) {
-        pendingTx = tx;
-        historyLink.href = transactionsLink(number);
-        uncertainBox.hidden = false;
+        historyLink.href = transactionsLink(accountId);
+        setPending(tx);
       } else {
-        pendingTx = null;
-        showApiError(form, err);
+        setPending(null);
+        showApiError(form, err, {
+          NOT_FOUND: { message: '가상 입금 API가 없습니다. 백엔드를 demo 프로필로 실행했는지 확인해 주세요.' },
+        });
       }
     } finally {
       setBusy(submit, false);
+      submit.disabled = Boolean(pendingTx);
       retryButton.disabled = false;
     }
   }
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (pendingTx) return;
     clearErrors(form);
-    const number = select.value;
-    if (!number) return showFieldError(form, 'accountNumber', '입금할 계좌를 선택해 주세요.');
+    const account = current();
+    if (!account) return showFieldError(form, 'accountId', '입금할 계좌를 선택해 주세요.');
     const { value, error } = parseAmount(form.amount.value);
     if (error) return showFieldError(form, 'amount', error);
-
-    // 입력이 그대로인 결과 미확인 거래가 있으면 새 키를 만들지 않고 그 거래를 다시 보낸다.
-    const tx = pendingTx || api.newDeposit(number, value);
-    submitDeposit(tx, number);
+    submitDeposit(api.newDemoDeposit(account.number, value), account.accountId);
   });
 
   retryButton.addEventListener('click', () => {
@@ -92,9 +100,8 @@ function init() {
   });
 
   async function load() {
-    let accounts;
     try {
-      accounts = await api.listAccounts();
+      accounts = (await api.listAccounts()).items.filter(isDebitCandidate);
     } catch (err) {
       showApiError(section, err);
       return;
@@ -105,10 +112,9 @@ function init() {
       noAccounts.hidden = false;
       return;
     }
-    accounts.forEach((a) => balances.set(a.number, a.balance));
-    select.replaceChildren(...accounts.map((a) => el('option', { value: a.number, textContent: a.number })));
+    select.replaceChildren(...accounts.map((a) => el('option', { value: a.accountId, textContent: accountLabel(a) })));
     const preset = new URLSearchParams(location.search).get('account');
-    if (preset && balances.has(preset)) select.value = preset;
+    if (preset && accounts.some((a) => a.accountId === preset)) select.value = preset;
     renderBalance();
     form.hidden = false;
   }

@@ -26,6 +26,7 @@
 <li data-when="guest"><a href="/login/">로그인</a></li>
 <li data-when="guest"><a href="/join/">회원가입</a></li>
 <li data-when="member" hidden><span class="util-user"><strong data-username></strong>님</span></li>
+<li data-when="member" hidden class="session-box"><span class="session-timer" data-session-timer title="마지막 요청 후 10분이 지나면 자동 로그아웃됩니다">-</span><button type="button" class="session-extend" data-session-extend>연장</button></li>
 <li data-when="member" hidden><button type="button" class="link-button" data-logout>로그아웃</button></li>
 <li><a href="/support/">고객센터</a></li>
 <li><a href="/security/">보안센터</a></li>
@@ -36,13 +37,13 @@
 <a class="logo" href="/"><span class="logo-mark" aria-hidden="true">P</span><span class="logo-text">Project Bank</span></a>
 <button type="button" class="gnb-toggle" aria-expanded="false" aria-controls="gnb">전체메뉴</button>
 <nav class="gnb" id="gnb" aria-label="주 메뉴"><ul class="gnb-list">
-<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
-<li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
+<li class="gnb-item"><a href="/inquiry/" class="gnb-link">조회</a><ul class="gnb-sub"><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/manage/">계좌 관리</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></li>
+<li class="gnb-item"><a href="/transfer/" class="gnb-link">이체</a><ul class="gnb-sub"><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/beneficiaries/">자주 쓰는 계좌</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></li>
 <li class="gnb-item"><a href="/bills/" class="gnb-link">공과금</a><ul class="gnb-sub"><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></li>
 <li class="gnb-item"><a href="/fx/" class="gnb-link">외환</a><ul class="gnb-sub"><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></li>
 <li class="gnb-item"><a href="/products/" class="gnb-link">금융상품</a><ul class="gnb-sub"><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></li>
 <li class="gnb-item"><a href="/realestate/" class="gnb-link">부동산</a><ul class="gnb-sub"><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></li>
-<li class="gnb-item"><a href="/mypage/" class="gnb-link">마이페이지</a><ul class="gnb-sub"><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></li>
+<li class="gnb-item"><a href="/mypage/" class="gnb-link">마이페이지</a><ul class="gnb-sub"><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/pin-reset/">계좌 비밀번호 재설정</a></li><li><a href="/mypage/recovery-codes/">복구 코드 관리</a></li><li><a href="/mypage/terms/">약관 동의 내역</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></li>
 </ul></nav>
 </div></div>
 </header>
@@ -167,13 +168,13 @@
 </div></div>
 <div class="inner">
 <nav class="footer-menu" aria-label="전체 메뉴">
-<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
-<div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
+<div class="footer-col"><h2><a href="/inquiry/">조회</a></h2><ul><li><a href="/inquiry/accounts/">전체계좌조회</a></li><li><a href="/inquiry/transactions/">거래내역조회</a></li><li><a href="/inquiry/manage/">계좌 관리</a></li><li><a href="/inquiry/card/">카드이용내역</a></li><li><a href="/inquiry/loan/">대출조회</a></li><li><a href="/inquiry/products/">예금·적금 가입내역</a></li><li><a href="/inquiry/closed/">해지계좌조회</a></li><li><a href="/inquiry/check/">수표조회</a></li></ul></div>
+<div class="footer-col"><h2><a href="/transfer/">이체</a></h2><ul><li><a href="/transfer/instant/">즉시이체</a></li><li><a href="/transfer/beneficiaries/">자주 쓰는 계좌</a></li><li><a href="/transfer/reserved/">예약이체</a></li><li><a href="/transfer/auto/">자동이체</a></li><li><a href="/transfer/result/">이체결과조회</a></li><li><a href="/transfer/limit/">이체한도 조회·변경</a></li><li><a href="/deposit-sim/">시연용 가상 입금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/bills/">공과금</a></h2><ul><li><a href="/bills/giro/">지로납부</a></li><li><a href="/bills/tax/">국세·지방세</a></li><li><a href="/bills/apartment/">아파트관리비</a></li><li><a href="/bills/history/">납부내역조회</a></li></ul></div>
 <div class="footer-col"><h2><a href="/fx/">외환</a></h2><ul><li><a href="/fx/rates/">환율조회</a></li><li><a href="/fx/exchange/">환전신청</a></li><li><a href="/fx/remittance/">해외송금</a></li><li><a href="/fx/deposit/">외화예금</a></li></ul></div>
 <div class="footer-col"><h2><a href="/products/">금융상품</a></h2><ul><li><a href="/products/deposit/">예금</a></li><li><a href="/products/savings/">적금</a></li><li><a href="/products/fund/">펀드</a></li><li><a href="/products/loan/">대출</a></li><li><a href="/products/trust/">신탁</a></li><li><a href="/products/insurance/">보험</a></li><li><a href="/products/isa/">ISA</a></li><li><a href="/products/open/">계좌개설</a></li></ul></div>
 <div class="footer-col"><h2><a href="/realestate/">부동산</a></h2><ul><li><a href="/realestate/price/">시세조회</a></li><li><a href="/realestate/loan/">부동산 대출 안내</a></li></ul></div>
-<div class="footer-col"><h2><a href="/mypage/">마이페이지</a></h2><ul><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></div>
+<div class="footer-col"><h2><a href="/mypage/">마이페이지</a></h2><ul><li><a href="/mypage/profile/">내 정보 조회·변경</a></li><li><a href="/mypage/password/">비밀번호 변경</a></li><li><a href="/mypage/pin-reset/">계좌 비밀번호 재설정</a></li><li><a href="/mypage/recovery-codes/">복구 코드 관리</a></li><li><a href="/mypage/terms/">약관 동의 내역</a></li><li><a href="/mypage/login-history/">접속 기록</a></li><li><a href="/mypage/withdraw/">회원탈퇴</a></li></ul></div>
 </nav>
 <div class="footer-info">
 <p class="footer-demo"><strong>시연용 가상 은행</strong> Project Bank는 보안 관제 프로젝트를 위해 만든 가상의 은행이며 실제 금융기관이 아닙니다. 실제 금융 정보나 개인정보를 입력하지 마세요.</p>

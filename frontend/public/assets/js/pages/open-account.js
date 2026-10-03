@@ -1,36 +1,34 @@
-// 계좌개설: 약관동의 → 상품선택 → 정보입력 → 확인 → 완료.
-//
-// 백엔드 POST /api/accounts는 아직 요청 본문을 받지 않는다(옵션 필드 추가는 백엔드 요청 사항).
-// 그래서 옵션은 화면에서 입력·검증만 하고, 개설 요청은 지금처럼 본문 없이 보낸다.
-// 백엔드가 필드를 정하면 buildRequest()의 결과를 api.openAccount()에 넘기도록 바꾼다.
-import { api, isUncertain } from '../api.js';
+// 입출금 계좌개설 (작업 요청서 R4, 흐름도 F4, 추가 협의 C4): 약관 → 계좌 비밀번호·별명 → 확인 → 완료.
+// - 서버가 저장하는 값은 { pin, termsVersion }뿐이다. 약관 버전은 GET /api/v2/terms의 CHECKING 항목에서 읽는다.
+//   (CHECKING의 required=false는 '회원가입 약관이 아님'이라는 뜻이며 계좌개설에는 필수다)
+// - 상품 종류(급여·청년), 거래 목적, 자금 출처, 알림, 마케팅 동의는 v6에 저장할 곳이 없어 화면에서 뺐다(C4 후속 범위).
+// - 개설은 멱등키를 쓴다. 결과가 불확실하면 같은 키로 다시 보내 계좌가 하나만 생기게 한다.
+// - 별명은 개설 후 preferences.alias로 따로 저장한다. 별명만 실패해도 계좌를 다시 만들지 않는다.
+import { api } from '../api.js';
 import { requireAuth } from '../session.js';
-import { formatAmount } from '../format.js';
-import { clearErrors, showFieldError, showFormError, showApiError, setBusy, transactionsLink, depositLink } from '../ui.js';
-import { ROUTES } from '../routes.js';
+import { formatAmount, formatDateTime } from '../format.js';
 import { validatePin } from '../validate.js';
-
-const PRODUCTS = {
-  free: 'Project 자유입출금 통장',
-  salary: 'Project 급여 통장',
-  youth: 'Project 청년 통장',
-};
+import {
+  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, guardUnload, setDisabled,
+  transactionsLink, depositLink, manageLink,
+} from '../ui.js';
 
 if (requireAuth()) init();
 
 function init() {
-  const steps = Object.fromEntries(
-    [...document.querySelectorAll('[data-step]')].map((node) => [node.dataset.step, node]),
-  );
+  const steps = Object.fromEntries([...document.querySelectorAll('[data-step]')].map((node) => [node.dataset.step, node]));
   const stepLabels = document.querySelectorAll('[data-step-label]');
   const termsForm = document.getElementById('terms-form');
-  const productForm = document.getElementById('product-form');
   const infoForm = document.getElementById('info-form');
   const confirmSection = document.getElementById('confirm-section');
   const openButton = document.getElementById('open-account');
   const confirmBack = document.getElementById('confirm-back');
+  const uncertainBox = document.getElementById('open-uncertain');
 
-  let draft = null; // 확인 단계에서 고정한 입력값
+  let checkingTerms = null; // { id:'CHECKING', version, text }
+  let myPhone = null;
+  let draft = null; // { pin, nickname }
+  let tx = null; // 확인 단계에서 만든 개설 요청 한 건
 
   function showStep(name) {
     for (const [key, node] of Object.entries(steps)) node.hidden = key !== name;
@@ -39,123 +37,151 @@ function init() {
   }
 
   document.querySelectorAll('[data-back]').forEach((button) => {
-    button.addEventListener('click', () => showStep(button.dataset.back));
+    button.addEventListener('click', () => {
+      if (tx?.pending) return;
+      tx = null; // 이전으로 가면 확인한 요청을 버린다. 다시 확인하면 새 키가 만들어진다.
+      showStep(button.dataset.back);
+    });
   });
 
-  // ---- 1. 약관동의 --------------------------------------------------------
+  // ---- 준비: 약관, 정보 보완 여부 ------------------------------------------
 
-  const agreeAll = document.getElementById('agree-all');
-  const agreeBoxes = [...termsForm.querySelectorAll('input[name="agree"]')];
-  agreeAll.addEventListener('change', () => agreeBoxes.forEach((box) => { box.checked = agreeAll.checked; }));
-  agreeBoxes.forEach((box) => box.addEventListener('change', () => {
-    agreeAll.checked = agreeBoxes.every((b) => b.checked);
-  }));
+  async function loadTerms() {
+    const loading = document.getElementById('terms-loading');
+    loading.hidden = false;
+    try {
+      const { items } = await api.terms();
+      checkingTerms = items.find((t) => t.id === 'CHECKING' || t.scope === 'ACCOUNT_OPEN') ?? null;
+      if (!checkingTerms) throw new Error('CHECKING 약관이 없습니다.');
+      const textBox = document.getElementById('terms-text');
+      textBox.replaceChildren(el('p', { textContent: checkingTerms.text }));
+      document.getElementById('terms-version').textContent = checkingTerms.version;
+      termsForm.agree.checked = false;
+      document.getElementById('terms-box').hidden = false;
+    } catch (err) {
+      showApiError(termsForm, err);
+    } finally {
+      loading.hidden = true;
+    }
+  }
+
+  // 이름·모의 휴대폰 확인이 없으면 서버가 BANKING_SETUP_REQUIRED로 거절한다. 미리 안내한다.
+  async function loadMe() {
+    try {
+      const me = await api.getMe();
+      myPhone = me.phone;
+      if (!me.bankingReady) document.getElementById('setup-required').hidden = false;
+    } catch (err) {
+      if (!err.handled) console.warn('[open-account] 내 정보를 불러오지 못했습니다.');
+    }
+  }
+
+  // ---- 1. 약관 ------------------------------------------------------------
 
   termsForm.addEventListener('submit', (event) => {
     event.preventDefault();
     clearErrors(termsForm);
-    if (agreeBoxes.some((box) => box.required && !box.checked)) {
-      return showFormError(termsForm, '필수 약관에 모두 동의해 주세요.');
-    }
-    showStep('product');
-  });
-
-  // ---- 2. 상품선택 --------------------------------------------------------
-
-  productForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    clearErrors(productForm);
-    if (!PRODUCTS[productForm.product.value]) return showFormError(productForm, '상품을 선택해 주세요.');
+    if (!checkingTerms) return showFormError(termsForm, '약관을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+    if (!termsForm.agree.checked) return showFormError(termsForm, '필수 약관에 동의해 주세요.');
     showStep('info');
   });
 
-  // ---- 3. 정보입력 --------------------------------------------------------
-
-  const label = (select) => select.selectedOptions[0]?.textContent ?? '';
+  // ---- 2. 정보입력 --------------------------------------------------------
 
   infoForm.addEventListener('submit', (event) => {
     event.preventDefault();
     clearErrors(infoForm);
-    const f = infoForm;
-    if (!f.purpose.value) return showFieldError(f, 'purpose', '거래 목적을 선택해 주세요.');
-    if (!f.fundSource.value) return showFieldError(f, 'fundSource', '자금 출처를 선택해 주세요.');
-    const nickname = f.nickname.value.trim();
-    if (nickname.length > 20) return showFieldError(f, 'nickname', '계좌 별칭은 20자 이내로 입력해 주세요.');
-    const pinError = validatePin(f.pin.value);
-    if (pinError) return showFieldError(f, 'pin', pinError);
-    if (f.pin.value !== f.pinConfirm.value) return showFieldError(f, 'pinConfirm', '계좌 비밀번호가 일치하지 않습니다.');
+    const pin = infoForm.pin.value;
+    const pinError = validatePin(pin, { phone: myPhone });
+    if (pinError) return showFieldError(infoForm, 'pin', pinError);
+    if (pin !== infoForm.pinConfirm.value) return showFieldError(infoForm, 'pinConfirm', '계좌 비밀번호가 일치하지 않습니다.');
+    const nickname = infoForm.nickname.value.trim();
+    if (nickname.length > 50) return showFieldError(infoForm, 'nickname', '계좌 별명은 50자 이내로 입력해 주세요.');
 
-    draft = {
-      product: productForm.product.value,
-      purpose: f.purpose.value,
-      fundSource: f.fundSource.value,
-      nickname,
-      alert: f.alert.checked,
-      marketing: termsForm.querySelector('input[value="marketing"]').checked,
-      pin: f.pin.value,
-    };
-    document.getElementById('confirm-product').textContent = PRODUCTS[draft.product];
-    document.getElementById('confirm-purpose').textContent = label(f.purpose);
-    document.getElementById('confirm-source').textContent = label(f.fundSource);
+    draft = { pin, nickname };
+    // 확인 단계로 넘어가는 시점에 키를 만들고 본문을 고정한다.
+    tx = api.newOpenAccount({ pin, termsVersion: checkingTerms.version });
+    document.getElementById('confirm-terms').textContent = `입출금통장 약관 ${checkingTerms.version} 동의`;
     document.getElementById('confirm-nickname').textContent = nickname || '없음';
-    document.getElementById('confirm-alert').textContent = draft.alert ? '받음' : '받지 않음';
     clearErrors(confirmSection);
     showStep('confirm');
     openButton.focus();
   });
 
-  // ---- 4. 확인 → 개설 -----------------------------------------------------
+  // ---- 3. 확인 → 개설 -----------------------------------------------------
 
-  // 백엔드에 보낼 본문(필드 이름은 백엔드 확정 전 가안). 현재는 쓰지 않는다.
-  function buildRequest(d) {
-    return {
-      productType: d.product, purpose: d.purpose, fundSource: d.fundSource,
-      nickname: d.nickname || null, notification: d.alert, marketingConsent: d.marketing, accountPin: d.pin,
-    };
+  function lock(locked) {
+    setDisabled([confirmBack], locked);
+    uncertainBox.hidden = !locked;
+    guardUnload(locked);
+    openButton.textContent = locked ? '같은 내용으로 다시 시도' : '계좌 개설';
   }
 
-  // 계좌 개설은 멱등하지 않으므로 자동 재시도하지 않는다.
   openButton.addEventListener('click', async () => {
-    if (!draft) return;
+    if (!tx) return;
     clearErrors(confirmSection);
     setBusy(openButton, true, '개설 중…');
-    confirmBack.disabled = true;
     let res;
     try {
-      res = await api.openAccount();
+      res = await tx.submit(); // 201 { accountId, number, balance, openedAt }
     } catch (err) {
-      if (isUncertain(err)) {
-        showFormError(confirmSection, '계좌 개설 결과를 확인하지 못했습니다. 전체계좌조회에서 개설 여부를 확인한 뒤 다시 시도해 주세요.');
-      } else {
-        showApiError(confirmSection, err);
-      }
-      return;
-    } finally {
       setBusy(openButton, false);
-      confirmBack.disabled = false;
+      if (err.uncertain) {
+        lock(true);
+        return;
+      }
+      lock(false);
+      tx = null;
+      if (err.code === 'TERMS_VERSION_REQUIRED') {
+        showStep('terms');
+        showFormError(termsForm, '약관이 바뀌었습니다. 다시 불러온 약관을 확인하고 동의해 주세요.');
+        loadTerms();
+        return;
+      }
+      if (err.code === 'BANKING_SETUP_REQUIRED') document.getElementById('setup-required').hidden = false;
+      // 거절이면 키는 폐기됐다. 정보입력으로 돌아가 다시 확인받는다.
+      showStep('info');
+      showApiError(infoForm, err, {
+        WEAK_CREDENTIAL: { field: 'pin', message: '반복·연속 숫자나 휴대폰 번호에 든 숫자는 계좌 비밀번호로 쓸 수 없습니다.' },
+      });
+      return;
     }
-
-    // 개설이 끝나면 비밀번호 입력값을 지우고, 뒤로 가서 다시 개설하지 못하게 한다.
+    setBusy(openButton, false);
+    lock(false);
+    tx = null;
     infoForm.pin.value = '';
     infoForm.pinConfirm.value = '';
-    const product = PRODUCTS[draft.product];
-    draft = null;
-
-    document.getElementById('result-product').textContent = product;
-    if (res && typeof res.number === 'string') {
-      document.getElementById('result-number').textContent = res.number;
-      document.getElementById('result-balance').textContent = formatAmount(res.balance);
-      document.getElementById('result-history').href = transactionsLink(res.number);
-      document.getElementById('result-deposit').href = depositLink(res.number);
-    } else {
-      // 계약상 번호가 와야 한다. 없으면 목록에서 확인하도록 안내한다.
-      console.error('[open-account] 계좌 개설 응답 형식이 계약과 다릅니다.', res);
-      document.getElementById('result-number').textContent = '전체계좌조회에서 확인해 주세요';
-      document.getElementById('result-balance').textContent = '-';
-      document.getElementById('result-history').href = ROUTES.accounts;
-    }
-    showStep('done');
+    await showDone(res);
   });
 
+  // ---- 4. 완료 ------------------------------------------------------------
+
+  async function showDone(res) {
+    const nickname = draft.nickname;
+    draft = null;
+    document.getElementById('result-number').textContent = res.number;
+    document.getElementById('result-balance').textContent = formatAmount(res.balance);
+    document.getElementById('result-opened').textContent = formatDateTime(res.openedAt);
+    document.getElementById('result-alias').textContent = nickname ? '저장 중…' : '없음';
+    document.getElementById('result-manage').href = manageLink(res.accountId);
+    document.getElementById('result-history').href = transactionsLink(res.accountId);
+    document.getElementById('result-deposit').href = depositLink(res.accountId);
+    showStep('done');
+    if (!nickname) return;
+
+    // 별명 저장은 개설과 별개다. 최신 version을 읽어 PATCH한다.
+    try {
+      const prefs = await api.getPreferences(res.accountId);
+      const saved = await api.updatePreferences(res.accountId, { version: prefs.version, alias: nickname });
+      document.getElementById('result-alias').textContent = saved.alias ?? nickname;
+    } catch (err) {
+      if (err.handled) return;
+      document.getElementById('result-alias').textContent = '저장 실패';
+      document.getElementById('alias-failed').hidden = false;
+    }
+  }
+
   showStep('terms');
+  loadTerms();
+  loadMe();
 }

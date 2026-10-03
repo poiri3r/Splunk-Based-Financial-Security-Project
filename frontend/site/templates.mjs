@@ -63,6 +63,7 @@ export function headerRegion(page) {
 <li data-when="guest">${link('/login', '로그인')}</li>
 <li data-when="guest">${link('/join', '회원가입')}</li>
 <li data-when="member" hidden><span class="util-user"><strong data-username></strong>님</span></li>
+<li data-when="member" hidden class="session-box"><span class="session-timer" data-session-timer title="마지막 요청 후 10분이 지나면 자동 로그아웃됩니다">-</span><button type="button" class="session-extend" data-session-extend>연장</button></li>
 <li data-when="member" hidden><button type="button" class="link-button" data-logout>로그아웃</button></li>
 <li>${link('/support', '고객센터')}</li>
 <li>${link('/security', '보안센터')}</li>
