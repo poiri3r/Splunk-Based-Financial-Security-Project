@@ -4,7 +4,7 @@
 export const API_BASE = '';
 
 // true: public/mock/mock.js가 응답한다. false: fetch로 실제 서버에 요청한다.
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 // 요청 1회 타임아웃(ms). fetch에는 기본 타임아웃이 없다. (잠정)
 export const TIMEOUT_MS = 10000;
