@@ -6,6 +6,7 @@ import { requireAuth } from '../session.js';
 import { parseMoneyInput, compareMoney } from '../money.js';
 import { formatAmount, formatDate } from '../format.js';
 import { clearErrors, showFieldError, showApiError, setBusy } from '../ui.js';
+import { bindStepUpWait, noteStepUpLimit } from '../step-up-wait.js';
 
 if (requireAuth()) init();
 
@@ -45,8 +46,12 @@ function init() {
     return value;
   }
 
+  // 한도 변경 승인도 이체·계좌 설정과 같은 step-up 제한을 쓴다.
+  const stepUpWait = bindStepUpWait(form, [submit]);
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (stepUpWait.isWaiting()) return;
     clearErrors(form);
     done.hidden = true;
     if (!limits) return;
@@ -71,6 +76,7 @@ function init() {
     } catch (err) {
       form.password.value = '';
       if (err.code === 'VERSION_CONFLICT') await load();
+      if (noteStepUpLimit(err)) return;
       showApiError(form, err, {
         REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
         LIMIT_INCREASE_NOT_ALLOWED: { message: '이 화면에서는 한도를 줄이기만 할 수 있습니다.' },
@@ -79,6 +85,7 @@ function init() {
       });
     } finally {
       setBusy(submit, false);
+      stepUpWait.sync();
     }
   });
 

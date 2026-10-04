@@ -11,6 +11,7 @@ import {
   clearErrors, showFieldError, showFormError, showApiError, setBusy, el, guardUnload, setDisabled,
   transactionsLink, transferResultLink, accountLabel, isDebitCandidate,
 } from '../ui.js';
+import { bindStepUpWait, noteStepUpLimit } from '../step-up-wait.js';
 
 if (requireAuth()) init();
 
@@ -32,6 +33,8 @@ function init() {
   let actionToken = null; // 이 preview에 대한 승인 권한
   let tx = null; // 실행 요청 한 건(멱등키 + 고정 본문)
   let timer = null;
+  // 승인(step-up)을 보내야 하는 상태에서만 대기 제한을 건다. 결과 불명 재시도·이미 승인받은 실행은 step-up이 아니다.
+  const stepUpWait = bindStepUpWait(approveForm, [sendButton], { isApplicable: () => Boolean(preview) && !tx && !actionToken });
 
   function showStep(name) {
     for (const [key, node] of Object.entries(steps)) node.hidden = key !== name;
@@ -126,6 +129,7 @@ function init() {
     timer = setInterval(tick, 1000);
     tick();
     showStep('confirm');
+    stepUpWait.sync(); // 다른 화면에서 걸린 제한도 이어서 보여 준다
     approveForm.password.focus();
   }
 
@@ -161,6 +165,11 @@ function init() {
           backToInput('이미 실행된 확인 건입니다. 이체결과조회에서 결과를 확인해 주세요.');
           return false;
         default:
+          if (noteStepUpLimit(err)) { // 남은 시간 안내는 stepUpWait가 한다. 입력한 비밀번호를 자동으로 다시 보내지 않는다.
+            approveForm.password.value = '';
+            approveForm.pin.value = '';
+            return false;
+          }
           showApiError(approveForm, err, {
             REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
             PIN_INVALID: { field: 'pin', message: '계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.' },
@@ -173,7 +182,7 @@ function init() {
 
   approveForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!preview) return;
+    if (!preview || stepUpWait.isWaiting()) return;
     clearErrors(approveForm);
     setBusy(sendButton, true, '이체 중…');
     editButton.disabled = true;
@@ -197,6 +206,7 @@ function init() {
       setBusy(sendButton, false);
       if (tx?.pending) sendButton.textContent = '같은 내용으로 다시 시도';
       editButton.disabled = Boolean(tx?.pending);
+      stepUpWait.sync();
     }
   });
 
