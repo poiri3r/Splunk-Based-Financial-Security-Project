@@ -20,13 +20,14 @@ export const CATEGORIES = [
     desc: '보유 계좌와 거래내역을 조회합니다.',
     children: [
       { title: '전체계좌조회', path: '/inquiry/accounts', status: 'live', auth: true, desc: '보유한 모든 계좌의 잔액을 확인합니다.' },
+      { title: '계좌개설', path: '/inquiry/open', status: 'live', auth: true, desc: '새 입출금 계좌를 개설합니다.' },
       { title: '거래내역조회', path: '/inquiry/transactions', status: 'live', auth: true, desc: '계좌별 입출금 내역을 기간·구분별로 확인합니다.' },
       { title: '계좌 관리', path: '/inquiry/manage', status: 'live', auth: true, desc: '계좌 별명·숨김·순서, 출금 등록, 계좌 비밀번호를 관리합니다.' },
       { title: '카드이용내역', path: '/inquiry/card', status: 'stub', stub: 'inquiry', auth: true, desc: '체크·신용카드 이용 내역을 조회합니다.' },
       { title: '대출조회', path: '/inquiry/loan', status: 'stub', stub: 'inquiry', auth: true, desc: '대출 잔액과 이자 납입 내역을 조회합니다.' },
       { title: '예금·적금 가입내역', path: '/inquiry/products', status: 'live', auth: true, desc: '가입한 예금·적금 상품을 확인합니다.' },
       { title: '예금·적금 상세', path: '/inquiry/products/detail', status: 'live', auth: true, nav: false, desc: '가입 상세, 적금 납입, 해지를 처리합니다.' },
-      { title: '해지계좌조회', path: '/inquiry/closed', status: 'stub', stub: 'inquiry', auth: true, desc: '해지된 계좌의 과거 내역을 조회합니다.' },
+      { title: '해지계좌조회', path: '/inquiry/closed', status: 'live', auth: true, desc: '해지된 계좌와 해지 전 거래내역을 조회합니다.' },
       { title: '수표조회', path: '/inquiry/check', status: 'stub', stub: 'inquiry', desc: '자기앞수표의 정상 발행 여부를 확인합니다.' },
     ],
   },
@@ -76,7 +77,6 @@ export const CATEGORIES = [
       { title: '신탁', path: '/products/trust', status: 'stub', desc: '자산을 맡겨 운용하는 신탁 상품을 안내합니다.' },
       { title: '보험', path: '/products/insurance', status: 'stub', desc: '방카슈랑스 보험 상품을 안내합니다.' },
       { title: 'ISA', path: '/products/isa', status: 'stub', desc: '개인종합자산관리계좌를 안내합니다.' },
-      { title: '계좌개설', path: '/products/open', status: 'live', auth: true, desc: '새 입출금 계좌를 개설합니다.' },
     ],
   },
   {

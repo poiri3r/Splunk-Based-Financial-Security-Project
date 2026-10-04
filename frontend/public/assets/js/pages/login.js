@@ -1,7 +1,7 @@
 // 로그인 (작업 요청서 A2). 응답 형식 {token, tokenType, expiresIn}은 v4와 같다.
 // 실패: 1~2회 401 LOGIN_FAILED, 3회째 423 LOGIN_LOCKED. 잠기면 정답을 넣어도 풀리지 않고 /login-unlock 절차가 필요하다.
 import { api } from '../api.js';
-import { getToken, saveSession, safeNext } from '../session.js';
+import { getToken, saveSession, safeNext, setDisplayName } from '../session.js';
 import { clearErrors, showFieldError, showFormError, showApiError, setBusy, MSG_GENERAL } from '../ui.js';
 
 // 로그인 후 원래 가려던 페이지로 돌아간다. next가 없거나 허용되지 않는 값이면 홈.
@@ -37,6 +37,10 @@ form.addEventListener('submit', async (event) => {
       return;
     }
     saveSession(res.token, res.expiresIn, username);
+    // 인사말용 본명. 못 받아도 로그인은 성공이므로 아이디로 표시하고 넘어간다(layout.js가 다음 화면에서 다시 시도).
+    try {
+      setDisplayName((await api.getMe())?.name);
+    } catch { /* 무시 */ }
     location.replace(next);
   } catch (err) {
     // 토큰 없는 요청이므로 api.js는 401을 세션 만료로 처리하지 않는다.

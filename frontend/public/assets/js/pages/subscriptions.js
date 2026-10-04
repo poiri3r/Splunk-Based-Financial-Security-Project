@@ -17,7 +17,8 @@ function init() {
   async function load() {
     clearErrors(section);
     try {
-      const [{ items }, products] = await Promise.all([api.listSavings(), api.savingsProducts()]);
+      const [list, products] = await Promise.all([api.listSavings(), api.savingsProducts()]);
+      const items = list.items.filter((s) => s.status !== 'CLOSED'); // 해지한 상품은 해지계좌조회에서
       const today = kstToday();
       document.getElementById('sub-body').replaceChildren(...items.map((s) => {
         const product = products.find((p) => p.productId === s.productId);

@@ -882,10 +882,13 @@ function stepUpVerify(db, user, password) {
   fail(401, 'REAUTHENTICATION_FAILED', '비밀번호가 올바르지 않습니다.');
 }
 
+// 이체 승인(TRANSFER)은 계좌 비밀번호(PIN)만 확인한다(password가 와도 무시). 2026-10-04 백엔드와 합의한 변경이며,
+// 백엔드 확정 계약(필드·authenticationMethod 값)이 오기 전의 예상 계약이다. 설정 승인은 계속 로그인 비밀번호.
 function stepUp(ctx) {
   const { db, user, body } = ctx;
+  const transfer = body.purpose === 'TRANSFER';
   check({
-    password: blank(body.password) || tooLong(body.password, 64),
+    password: !transfer && (blank(body.password) || tooLong(body.password, 64)),
     pin: optPattern(body.pin, /^\d{4}$/),
     purpose: blank(body.purpose) || !/^(TRANSFER|ACCOUNT_PIN|DEBIT_SETTING|TRANSFER_LIMITS)$/.test(body.purpose),
     targetId: !str(body.targetId) || !UUID_ANY_RE.test(body.targetId),
@@ -896,13 +899,12 @@ function stepUp(ctx) {
     const p = db.previews[body.targetId];
     if (!p || p.username !== user) fail(404, 'TRANSFER_NOT_FOUND', '이체 정보가 없거나 접근할 수 없습니다.');
     previewUsable(p);
-    stepUpVerify(db, user, body.password);
     const source = db.accounts[p.sourceId];
     debitAllowed(source);
     verifyPin(source, body.pin);
     const token = secret();
     db.transferActions[token] = { username: user, previewId: body.targetId, expiresAt: p.expiresAt, securityVersion: source.securityVersion, consumed: false };
-    return json(200, { actionToken: token, expiresAt: isoAt(p.expiresAt), authenticationMethod: 'PASSWORD_AND_ACCOUNT_PIN' });
+    return json(200, { actionToken: token, expiresAt: isoAt(p.expiresAt), authenticationMethod: 'ACCOUNT_PIN' });
   }
   const changes = parseIntent(body.purpose, body.changes);
   if (body.purpose === 'TRANSFER_LIMITS') {
@@ -1249,7 +1251,6 @@ function joinSavings(ctx) {
   const amountBad = moneyField(body.amount, 'amount', /^[1-9]\d{0,7}(\.\d{1,2})?$/);
   check({
     amount: amountBad,
-    password: blank(body.password) || tooLong(body.password, 64),
     pin: optPattern(body.pin, /^\d{4}$/),
     productId: blank(body.productId),
     sourceAccountId: !str(body.sourceAccountId) || !UUID_ANY_RE.test(body.sourceAccountId),
@@ -1265,8 +1266,7 @@ function joinSavings(ctx) {
     if (amount < cents(product.minimum) || amount > cents(product.maximum)) conflict('PRODUCT_AMOUNT_INVALID');
     const source = ownedAccount(db, user, body.sourceAccountId);
     funding(db, user, source, amount);
-    savingsAuth(db, user, body.password);
-    verifyPin(source, body.pin);
+    verifyPin(source, body.pin); // 2026-10-04 합의: 가입은 출금 계좌 PIN만 확인(예상 계약)
     let number;
     do number = `3${randomDigits(15)}`; while (accountByNumber(db, number));
     const holdingId = createAccount(db, user, { number, accountName: product.name, accountType: product.accountType, debitEnabled: false });
@@ -1296,7 +1296,6 @@ function period(opened, day) {
 function paySavings(ctx) {
   const { db, user, params, body, headers } = ctx;
   check({
-    password: blank(body.password) || tooLong(body.password, 64),
     pin: optPattern(body.pin, /^\d{4}$/),
     sourceAccountId: !str(body.sourceAccountId) || !UUID_ANY_RE.test(body.sourceAccountId),
     version: !Number.isInteger(body.version) || body.version < 0,
@@ -1317,8 +1316,7 @@ function paySavings(ctx) {
     if (holding.status !== 'ACTIVE') conflict('ACCOUNT_UNAVAILABLE');
     const amount = BigInt(c.installment);
     funding(db, user, source, amount);
-    savingsAuth(db, user, body.password);
-    verifyPin(source, body.pin);
+    verifyPin(source, body.pin); // 2026-10-04 합의: 납입은 출금 계좌 PIN만 확인(예상 계약)
     consumeLimit(db, user, amount);
     move(db, body.sourceAccountId, c.accountId, amount);
     c.payments.push({ period: p, paidOn: day, amount: String(amount) });

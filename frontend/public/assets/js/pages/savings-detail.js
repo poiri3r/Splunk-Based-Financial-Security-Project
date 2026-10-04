@@ -73,7 +73,7 @@ function init() {
   // ---- 납입 ---------------------------------------------------------------
 
   function lockPay(locked) {
-    setDisabled([payForm.sourceAccountId, payForm.password, payForm.pin], locked);
+    setDisabled([payForm.sourceAccountId, payForm.pin], locked);
     document.getElementById('pay-uncertain').hidden = !locked;
     guardUnload(locked || Boolean(closeTx?.pending));
     document.getElementById('pay-submit').textContent = locked ? '같은 내용으로 다시 시도' : '납입하기';
@@ -85,13 +85,11 @@ function init() {
     document.getElementById('pay-done').hidden = true;
     if (!payTx) {
       const sourceAccountId = payForm.sourceAccountId.value;
-      const password = payForm.password.value;
-      const pin = payForm.pin.value;
+      const pin = payForm.pin.value; // 2026-10-04 합의: 납입은 출금 계좌 비밀번호(PIN)만 받는다
       if (!sourceAccountId) return showFieldError(payForm, 'sourceAccountId', '출금 계좌를 선택해 주세요.');
-      if (!password) return showFieldError(payForm, 'password', '로그인 비밀번호를 입력해 주세요.');
       const pinError = validatePinFormat(pin);
       if (pinError) return showFieldError(payForm, 'pin', pinError);
-      payTx = api.newSavingsPayment(id, { sourceAccountId, version: sub.version, password, pin });
+      payTx = api.newSavingsPayment(id, { sourceAccountId, version: sub.version, pin });
     }
     const button = document.getElementById('pay-submit');
     setBusy(button, true, '납입 중…');
@@ -107,20 +105,18 @@ function init() {
       if (err.uncertain) return lockPay(true);
       payTx = null;
       lockPay(false);
-      payForm.password.value = '';
       payForm.pin.value = '';
       if (['VERSION_CONFLICT', 'PERIOD_ALREADY_PAID', 'PAYMENT_PERIOD_CLOSED', 'SAVINGS_CLOSED'].includes(err.code)) {
         try { await loadDetail(); } catch (e) { if (!e.handled) console.warn('[savings] 상세 재조회 실패'); }
       }
       showApiError(payForm, err, {
-        REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
         PIN_INVALID: { field: 'pin', message: '계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.' },
         VERSION_CONFLICT: { message: '가입 정보가 그사이 바뀌었습니다. 최신 내용을 확인하고 다시 납입해 주세요.' },
         PERIOD_ALREADY_PAID: { message: '이번 회차는 이미 납입했습니다. 다음 회차에 납입해 주세요.' },
         PAYMENT_PERIOD_CLOSED: { message: '납입 기간이 끝났습니다(만기 이후 납입 불가).' },
         PAYMENT_NOT_SUPPORTED: { message: '예금은 추가 납입할 수 없습니다.' },
         SAVINGS_CLOSED: { message: '이미 해지된 상품입니다.' },
-        RATE_LIMITED: { message: '비밀번호 확인 요청이 너무 많습니다. 5분 뒤 다시 시도해 주세요.' },
+        RATE_LIMITED: { message: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
       });
     } finally {
       if (!payTx?.pending) setBusy(button, false);

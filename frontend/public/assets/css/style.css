@@ -35,6 +35,10 @@
   color: var(--text);
   background: var(--bg);
   line-height: 1.5;
+  /* 한글을 단어(띄어쓰기) 단위로만 줄바꿈한다. 글꼴 폭이 넓은 환경(Windows 맑은 고딕)에서 "찾 / 기"처럼 쪼개지지 않게.
+     띄어쓰기 없는 긴 문자열(계좌번호 등)은 칸을 넘칠 때만 끊는다. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 * { box-sizing: border-box; }
@@ -78,6 +82,9 @@ a { color: var(--link); }
 .form-error { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; background: var(--danger-bg); color: var(--danger); }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 20px; }
 .date-range { display: flex; align-items: center; gap: 8px; }
+.date-range input { flex: 1 1 0; min-width: 0; }
+/* 날짜 두 칸은 한 칸(240px)에 들어가지 않는다. 여러 열일 때는 두 열을 차지하게 해 옆 칸과 겹치지 않게 한다. */
+@media (min-width: 601px) { .form-grid > .field:has(.date-range) { grid-column: span 2; } }
 .check { display: flex; gap: 8px; align-items: flex-start; margin: 16px 0; }
 
 /* ---- 버튼 ---- */
@@ -128,6 +135,7 @@ a { color: var(--link); }
 .account-number { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); }
 .balance { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .account-heading { display: flex; gap: 12px; align-items: baseline; margin: 0; }
+.account-kind { font-size: 0.8em; font-weight: 600; color: var(--muted); }
 
 .balance-list { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
 .balance-list li { display: flex; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }

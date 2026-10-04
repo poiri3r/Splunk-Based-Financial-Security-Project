@@ -6,9 +6,9 @@
 import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import {
-  formatAmount, formatSignedAmount, formatDateTime, formatCounterparty, directionLabel, ACCOUNT_TYPE_LABELS,
+  formatAmount, formatSignedAmount, formatDateTime, formatCounterparty, directionLabel,
 } from '../format.js';
-import { clearErrors, showFieldError, showFormError, showApiError, el, transferLink, isDebitCandidate } from '../ui.js';
+import { clearErrors, showFieldError, showFormError, showApiError, el, transferLink, isDebitCandidate, setAccountTitle, isOpenAccount } from '../ui.js';
 
 const PAGE_SIZE = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,9 +93,11 @@ function init() {
   async function start() {
     const requested = params.get('account');
     let accounts = [];
+    let all = [];
     try {
-      // 숨긴 계좌도 내역은 볼 수 있게 관리 목록을 쓴다.
-      accounts = (await api.listAccounts({ includeHidden: true })).items;
+      // 숨긴 계좌도 내역은 볼 수 있게 관리 목록을 쓴다. 해지 계좌는 빼고 해지계좌조회로 안내한다.
+      all = (await api.listAccounts({ includeHidden: true })).items;
+      accounts = all.filter(isOpenAccount);
     } catch (err) {
       showApiError(section, err);
       loading.hidden = true;
@@ -108,9 +110,14 @@ function init() {
     }
     select.replaceChildren(...accounts.map((a) => el('option', {
       value: a.accountId,
-      textContent: `${a.preferences?.alias || a.accountName} ${a.number}${a.status === 'CLOSED' ? ' (해지)' : ''}${a.preferences?.hidden ? ' (숨김)' : ''}`,
+      textContent: `${a.preferences?.alias || a.accountName} ${a.number}${a.preferences?.hidden ? ' (숨김)' : ''}`,
     })));
 
+    if (requested && all.some((a) => a.accountId === requested && !isOpenAccount(a))) {
+      loading.hidden = true;
+      showFormError(section, '해지된 계좌입니다. 해지된 계좌의 내역은 조회 > 해지계좌조회에서 확인해 주세요.');
+      return;
+    }
     if (requested !== null && !UUID_RE.test(requested)) {
       loading.hidden = true;
       showFormError(section, '계좌 정보가 올바르지 않습니다. 계좌를 다시 선택해 주세요.');
@@ -121,7 +128,7 @@ function init() {
     const accountId = account?.accountId ?? requested;
     select.value = accountId;
     if (account) {
-      document.getElementById('tx-account-name').textContent = `${ACCOUNT_TYPE_LABELS[account.accountType] ?? ''} ${account.preferences?.alias || account.accountName}`;
+      setAccountTitle(document.getElementById('tx-account-name'), account);
       document.getElementById('tx-account').textContent = account.number;
       document.getElementById('tx-balance').textContent = `잔액 ${formatAmount(account.balance)}`;
       if (isDebitCandidate(account)) {

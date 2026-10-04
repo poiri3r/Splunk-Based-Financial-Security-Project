@@ -1,7 +1,7 @@
 // 모든 페이지가 불러오는 공통 스크립트: 로그인 필요 페이지 보호, 헤더 로그인 상태·세션 남은 시간, 모바일 메뉴, 깡통 조회 결과.
 // GNB·푸터 HTML 자체는 site/build.mjs가 미리 생성해 두므로 여기서 만들지 않는다.
 
-import { getToken, getUsername, clearSession, redirectToLogin, setNotice, takeNotice } from './session.js';
+import { getToken, getDisplayName, hasDisplayName, setDisplayName, clearSession, redirectToLogin, setNotice, takeNotice } from './session.js';
 import { ROUTES } from './routes.js';
 import { formatRemaining } from './format.js';
 
@@ -18,7 +18,8 @@ function init() {
   document.querySelectorAll('[data-when]').forEach((node) => {
     node.hidden = (node.dataset.when === 'member') !== member;
   });
-  document.querySelectorAll('[data-username]').forEach((node) => { node.textContent = getUsername(); });
+  showDisplayName();
+  if (member && !hasDisplayName()) loadDisplayName();
   document.querySelectorAll('[data-logout]').forEach((button) => button.addEventListener('click', () => logout(button)));
 
   showNotice();
@@ -38,6 +39,22 @@ function init() {
   }
 }
 
+// 헤더 "○○님"과 메인 인사말. 본명이 없으면 아이디를 보여 준다.
+function showDisplayName() {
+  document.querySelectorAll('[data-username]').forEach((node) => { node.textContent = getDisplayName(); });
+}
+
+// 로그인 직후 이름 조회가 실패했거나 이 기능 전에 로그인한 세션이면 한 번 더 받아 온다.
+async function loadDisplayName() {
+  try {
+    const api = await loadApi();
+    setDisplayName((await api.getMe())?.name);
+    showDisplayName();
+  } catch (err) {
+    if (!err.handled) console.warn('[layout] 이름을 불러오지 못해 아이디로 표시합니다.', err.code ?? err.kind ?? err);
+  }
+}
+
 function showNotice() {
   const text = takeNotice();
   const main = document.getElementById('main');
@@ -46,7 +63,10 @@ function showNotice() {
 }
 
 // api.js는 목 모듈까지 불러오므로 로그인 상태일 때만 가져온다.
-const loadApi = () => import('./api.js').then((m) => m.api);
+// 함수 선언문이어야 한다: 파일 위쪽의 init()이 이 줄보다 먼저 실행되므로 const 화살표 함수면 TDZ 오류가 난다.
+function loadApi() {
+  return import('./api.js').then((m) => m.api);
+}
 
 // 서버 로그아웃 → 브라우저 토큰 정리. 응답을 못 받으면 토큰은 지우되 서버 폐기는 확인되지 않았다고 알린다.
 async function logout(button) {
@@ -90,7 +110,7 @@ function startSessionTimer() {
       const idle = Date.parse(status.idleExpiresAt);
       expiresAt = Number.isFinite(idle) ? idle : null;
     } catch (err) {
-      if (!err.handled) console.warn('[session] 세션 상태를 확인하지 못했습니다.', err.code ?? err.kind);
+      if (!err.handled) console.warn('[session] 세션 상태를 확인하지 못했습니다.', err.code ?? err.kind ?? err);
     } finally {
       checking = false;
       render();

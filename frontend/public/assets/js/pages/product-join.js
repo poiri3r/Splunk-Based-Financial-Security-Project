@@ -143,13 +143,13 @@ function start(product) {
     approveForm.reset();
     lock(false);
     showStep('confirm');
-    approveForm.password.focus();
+    approveForm.pin.focus();
   });
 
   // ---- 3. 확인·승인 → 가입 ------------------------------------------------
 
   function lock(locked) {
-    setDisabled([backButton, approveForm.password, approveForm.pin], locked);
+    setDisabled([backButton, approveForm.pin], locked);
     uncertainBox.hidden = !locked;
     guardUnload(locked);
     submitButton.textContent = locked ? '같은 내용으로 다시 시도' : '가입하기';
@@ -165,12 +165,11 @@ function start(product) {
     event.preventDefault();
     clearErrors(approveForm);
     if (!tx) {
-      const password = approveForm.password.value;
+      // 2026-10-04 합의: 가입 승인은 출금 계좌 비밀번호(PIN)만 받는다(로그인 비밀번호 제외). 백엔드 확정 계약이 오면 대조할 것
       const pin = approveForm.pin.value;
-      if (!password) return showFieldError(approveForm, 'password', '로그인 비밀번호를 입력해 주세요.');
       const pinError = validatePinFormat(pin);
       if (pinError) return showFieldError(approveForm, 'pin', pinError);
-      tx = api.newSavingsJoin({ productId: product.productId, termsVersion: product.termsVersion, ...draft, password, pin });
+      tx = api.newSavingsJoin({ productId: product.productId, termsVersion: product.termsVersion, ...draft, pin });
     }
     setBusy(submitButton, true, '가입 중…');
     try {
@@ -195,15 +194,12 @@ function start(product) {
 
   // 거절(4xx): 키는 폐기됐다. 승인 입력 오류는 이 단계에, 금액·계좌 문제는 입력 단계에 표시한다.
   async function showRejected(err) {
-    approveForm.password.value = '';
     approveForm.pin.value = '';
     switch (err.code) {
-      case 'REAUTHENTICATION_FAILED':
-        return showFieldError(approveForm, 'password', '로그인 비밀번호가 올바르지 않습니다.');
       case 'PIN_INVALID':
         return showFieldError(approveForm, 'pin', '계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.');
       case 'RATE_LIMITED':
-        return showFormError(approveForm, '비밀번호 확인 요청이 너무 많습니다. 5분 뒤 다시 시도해 주세요.');
+        return showFormError(approveForm, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
       case 'TERMS_VERSION_MISMATCH':
       case 'PRODUCT_NOT_FOUND':
         showStep('terms');

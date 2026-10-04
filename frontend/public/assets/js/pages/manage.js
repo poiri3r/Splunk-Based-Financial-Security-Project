@@ -8,7 +8,7 @@ import { requireAuth } from '../session.js';
 import { validatePin, validatePinFormat } from '../validate.js';
 import { formatAmount, ACCOUNT_TYPE_LABELS } from '../format.js';
 import {
-  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, pinResetLink, isDebitCandidate,
+  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, pinResetLink, isDebitCandidate, setAccountTitle, isOpenAccount,
 } from '../ui.js';
 import { bindStepUpWait, noteStepUpLimit } from '../step-up-wait.js';
 
@@ -43,7 +43,7 @@ function init() {
       }
       return el('li', { className: 'account' }, [
         el('div', { className: 'account-info' }, [
-          el('span', { className: 'account-type', textContent: `${ACCOUNT_TYPE_LABELS[a.accountType] ?? a.accountType} · ${a.accountName}${a.status === 'CLOSED' ? ' (해지)' : ''}` }),
+          el('span', { className: 'account-type', textContent: `${ACCOUNT_TYPE_LABELS[a.accountType] ?? a.accountType} · ${a.accountName}` }),
           p.alias ? el('strong', { className: 'account-alias', textContent: p.alias }) : '',
           el('span', { className: 'account-number', textContent: `${a.number} · 순서 ${p.order}` }),
           el('span', { className: 'tags' }, p.hidden ? [el('span', { className: 'tag out', textContent: '숨김' })] : []),
@@ -56,7 +56,7 @@ function init() {
   function renderDetail() {
     const a = selected;
     const p = a.preferences;
-    document.getElementById('m-name').textContent = `${ACCOUNT_TYPE_LABELS[a.accountType] ?? ''} ${p.alias || a.accountName}`;
+    setAccountTitle(document.getElementById('m-name'), a);
     document.getElementById('m-number').textContent = `${a.number} · 잔액 ${formatAmount(a.balance)}`;
     prefForm.alias.value = p.alias ?? '';
     prefForm.order.value = String(p.order);
@@ -81,7 +81,7 @@ function init() {
   }
 
   async function loadAccounts() {
-    accounts = (await api.listAccounts({ includeHidden: true })).items;
+    accounts = (await api.listAccounts({ includeHidden: true })).items.filter(isOpenAccount);
   }
 
   async function select(accountId) {

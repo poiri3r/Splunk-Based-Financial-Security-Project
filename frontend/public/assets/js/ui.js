@@ -3,6 +3,7 @@
 
 import { ROUTES } from './routes.js';
 import { IDEMPOTENCY_ERRORS } from './errors.js';
+import { ACCOUNT_TYPE_LABELS } from './format.js';
 
 export const MSG_GENERAL = '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 export const MSG_ACCOUNT_NOT_FOUND = '계좌가 없거나 접근할 수 없습니다. 계좌를 다시 확인해 주세요.';
@@ -125,9 +126,21 @@ export function setDisabled(nodes, disabled) {
   nodes.forEach((node) => { if (node) node.disabled = disabled; });
 }
 
+// 화면 제목용 계좌 이름: "(입출금) 별명". 종류는 괄호와 작은 글씨로 두어 별명과 섞여 보이지 않게 한다.
+export function setAccountTitle(node, account) {
+  const kind = ACCOUNT_TYPE_LABELS[account.accountType];
+  node.replaceChildren(
+    ...(kind ? [el('span', { className: 'account-kind', textContent: `(${kind})` }), ' '] : []),
+    account.preferences?.alias || account.accountName,
+  );
+}
+
 // 계좌 표시 이름: 별명이 있으면 별명, 없으면 서버 상품명
 export const accountLabel = (account) =>
   `${account.preferences?.alias || account.accountName} ${account.number}`;
+
+// 해지되지 않은 계좌. 해지(CLOSED) 계좌는 해지계좌조회에서만 보여 준다.
+export const isOpenAccount = (account) => account.status !== 'CLOSED';
 
 // 출금 계좌 후보: 정상 입출금 계좌. 화면 편의용 필터이며 최종 허용 여부는 서버가 판단한다.
 export const isDebitCandidate = (account) => account.accountType === 'CHECKING' && account.status === 'ACTIVE';

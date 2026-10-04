@@ -12,7 +12,7 @@
 .util-bar ul { display: flex; list-style: none; margin: 0; padding: 0; }
 .util-bar a, .util-bar .link-button { color: inherit; text-decoration: none; }
 .util-bar a:hover, .util-bar .link-button:hover { color: #fff; text-decoration: underline; }
-.segment li a { display: block; padding: 8px 14px; }
+.segment li a { display: block; padding: 8px 14px; white-space: nowrap; }
 .segment li a[aria-current] { background: var(--surface); color: var(--brand-secondary); font-weight: 700; }
 .util-links { gap: 4px 16px; flex-wrap: wrap; justify-content: flex-end; }
 .util-user strong { color: #fff; }
@@ -20,14 +20,15 @@
 /* ---- GNB (메가메뉴: 대메뉴에 올리면 모든 하위 메뉴가 열 단위로 펼쳐진다) ---- */
 
 .site-header { position: relative; z-index: 30; }
-.gnb-bar { --mega-h: 300px; position: relative; background: var(--surface); border-bottom: 1px solid var(--border); }
+.gnb-bar { --mega-h: 340px; position: relative; background: var(--surface); border-bottom: 1px solid var(--border); }
 .gnb-bar .inner { display: flex; align-items: stretch; gap: 32px; height: 76px; }
 .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--brand-secondary); font-weight: 800; font-size: 1.35rem; letter-spacing: -0.02em; white-space: nowrap; }
 .logo-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: var(--brand-primary); color: var(--brand-secondary); font-size: 1.15rem; }
 .gnb-toggle { display: none; }
 .gnb { flex: 1; }
 .gnb-list { display: flex; height: 100%; margin: 0; padding: 0; list-style: none; }
-.gnb-item { flex: 1; position: relative; }
+/* 하위 메뉴 글자 폭만큼 열이 넓어지도록 auto 기준으로 나눈다(긴 메뉴 이름이 줄바꿈되지 않게). */
+.gnb-item { flex: 1 1 auto; position: relative; }
 .gnb-link {
   display: flex; align-items: center; justify-content: center; height: 100%;
   color: var(--text); font-weight: 700; font-size: 1.05rem; text-decoration: none;
@@ -35,13 +36,15 @@
 }
 .gnb-link[aria-current], .gnb-item:hover > .gnb-link, .gnb-item:focus-within > .gnb-link { border-bottom-color: var(--brand-primary); color: var(--brand-secondary); }
 .gnb-sub {
-  display: none; position: absolute; z-index: 41; top: 100%; left: 0; right: 0;
+  /* 문서 흐름 안에 두되 보이지 않게 해서, 가장 긴 하위 메뉴 폭이 열 너비 계산에 들어가게 한다.
+     높이는 막대(76px) 밖으로 넘쳐 그려질 뿐 레이아웃을 밀지 않는다. */
+  visibility: hidden; position: relative; z-index: 41;
   min-height: var(--mega-h); margin: 0; padding: 18px 12px; list-style: none; border-left: 1px solid var(--border);
 }
 .gnb-item:first-child .gnb-sub { border-left: 0; }
-.gnb-sub a { display: block; padding: 5px 4px; color: var(--muted); font-size: 0.92rem; text-decoration: none; }
+.gnb-sub a { display: block; padding: 5px 4px; color: var(--muted); font-size: 0.92rem; text-decoration: none; white-space: nowrap; }
 .gnb-sub a:hover, .gnb-sub a:focus-visible { color: var(--text); text-decoration: underline; }
-.gnb:hover .gnb-sub, .gnb:focus-within .gnb-sub { display: block; }
+.gnb:hover .gnb-sub, .gnb:focus-within .gnb-sub { visibility: visible; }
 .gnb-bar::after {
   content: ""; display: none; position: absolute; z-index: 40; top: 100%; left: 0; right: 0; height: var(--mega-h);
   background: var(--surface); border-bottom: 2px solid var(--brand-secondary); box-shadow: 0 12px 20px rgba(16, 24, 40, 0.08);
@@ -125,7 +128,9 @@
 .login-box { padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
 .login-box h2 { font-size: 1.2rem; margin-bottom: 4px; }
 .login-box .muted { margin: 0 0 20px; }
-.login-links { display: flex; justify-content: center; list-style: none; margin: 16px 0 0; padding: 0; font-size: 0.85rem; }
+/* 폭이 모자라면 링크 단위로 다음 줄로 넘긴다(링크 안에서는 줄바꿈하지 않음). */
+.login-links { display: flex; flex-wrap: wrap; justify-content: center; row-gap: 4px; list-style: none; margin: 16px 0 0; padding: 0; font-size: 0.85rem; }
+.login-links li { white-space: nowrap; }
 .login-links li + li::before { content: "|"; margin: 0 10px; color: var(--border); }
 .login-links a { color: var(--muted); text-decoration: none; }
 .login-links a:hover { text-decoration: underline; }
@@ -211,7 +216,7 @@
   .site-header.gnb-open .gnb { display: block; }
   .gnb-list { display: block; padding: 8px 20px; }
   .gnb-link { justify-content: flex-start; padding: 12px 0 4px; border-bottom: 0; }
-  .gnb-sub, .gnb:hover .gnb-sub, .gnb:focus-within .gnb-sub { display: flex; flex-wrap: wrap; gap: 0 16px; position: static; min-height: 0; padding: 0 0 12px; border-left: 0; border-bottom: 1px solid var(--border); }
+  .gnb-sub, .gnb:hover .gnb-sub, .gnb:focus-within .gnb-sub { display: flex; flex-wrap: wrap; gap: 0 16px; position: static; min-height: 0; visibility: visible; padding: 0 0 12px; border-left: 0; border-bottom: 1px solid var(--border); }
   .gnb-bar::after, .gnb-bar:has(.gnb:hover)::after, .gnb-bar:has(.gnb:focus-within)::after { display: none; }
 
   .sub-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 20px; }
