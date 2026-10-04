@@ -71,7 +71,7 @@ class SavingsService {
  Product product=catalog().stream().filter(p->p.productId.equals(r.productId())).findFirst().orElseThrow(()->new ApiException(HttpStatus.BAD_REQUEST,"PRODUCT_NOT_FOUND","상품을 확인해 주세요."));
  if(!TERMS.equals(r.termsVersion()))throw conflict("TERMS_VERSION_MISMATCH");BigDecimal amount=new BigDecimal(r.amount()).setScale(2);
  if(amount.compareTo(new BigDecimal(product.minimum))<0||amount.compareTo(new BigDecimal(product.maximum))>0)throw conflict("PRODUCT_AMOUNT_INVALID");
- Account source=owned(r.sourceAccountId());lock(source);funding(u,source,amount);authenticate(u,r.password());policy.verifyPin(source,r.pin());
+ Account source=owned(r.sourceAccountId());lock(source);funding(u,source,amount);limiter.check(u.id,"savings-join",30,60);policy.verifyPin(source,r.pin());
  // PIN failure commits only its attempt counter. All financial writes begin below.
  Account holding=new Account("3"+String.format("%015d",RANDOM.nextLong(1000000000000000L)),u,BigDecimal.ZERO.setScale(2),crypto);
  holding.accountName=product.name;holding.accountType=product.accountType;holding.debitEnabled=false;accounts.saveAndFlush(holding);

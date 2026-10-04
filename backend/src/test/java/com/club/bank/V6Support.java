@@ -43,7 +43,7 @@ class V6Support {
  String balance(Customer c)throws Exception{return call(auth(get("/api/v2/accounts/"+c.id()),c),200).path("balance").asText();}
  JsonNode me(Customer c)throws Exception{return call(auth(get("/api/v2/auth/me"),c),200);}
  JsonNode preview(Customer a,Customer b,String amount)throws Exception{return call(auth(body(post("/api/v2/transfers/previews"),Map.of("fromAccountId",a.id(),"bankCode","LOCAL","toAccountNumber",b.number(),"amount",amount,"memo","회비")),a),201);}
- String approval(Customer c,String id,String pin)throws Exception{return call(auth(body(post("/api/v2/auth/step-up"),Map.of("purpose","TRANSFER","targetId",id,"password",PASSWORD,"pin",pin)),c),200).path("actionToken").asText();}
+ String approval(Customer c,String id,String pin)throws Exception{return call(auth(body(post("/api/v2/auth/step-up"),Map.of("purpose","TRANSFER","targetId",id,"pin",pin)),c),200).path("actionToken").asText();}
  MockHttpServletRequestBuilder execute(Customer c,String preview,String grant,String key)throws Exception{return auth(body(post("/api/v2/transfers").header("Idempotency-Key",key),Map.of("previewId",preview,"actionToken",grant)),c);}
  Map<String,Object> proof(Customer c,String purpose,String pin){return Map.of("purpose",purpose,"method","ACCOUNT","name","김시연","accountNumber",c.number(),"pin",pin);}
  String resetGrant(Customer c,String purpose)throws Exception{return call(body(post("/api/v2/recovery/verifications"),proof(c,purpose,PIN)),200).path("resetToken").asText();}

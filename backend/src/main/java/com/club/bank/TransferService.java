@@ -1,6 +1,5 @@
 package com.club.bank;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
@@ -10,7 +9,6 @@ import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,19 +18,19 @@ class TransferService {
     private final CurrentCustomer current; private final UserRepo users; private final AccountRepo accounts;
     private final TransferPreviewRepo previews; private final TransferActionRepo actions; private final TransferRecordRepo records;
     private final IdempotencyRepo keys; private final TransferEngine engine; private final FieldCrypto crypto;
-    private final ObjectMapper json; private final PasswordEncoder passwords; private final EntityManager em;
+    private final ObjectMapper json; private final EntityManager em;
     private final StepUpLimiter stepUpLimiter;
     private final TransferRequestLimiter limiter; private final TransactionCursor cursors;
     private final AccountPolicy policy;
     private static final SecureRandom RANDOM=new SecureRandom();
     TransferService(CurrentCustomer current,UserRepo users,AccountRepo accounts,TransferPreviewRepo previews,
         TransferActionRepo actions,TransferRecordRepo records,IdempotencyRepo keys,TransferEngine engine,
-        FieldCrypto crypto,ObjectMapper json,PasswordEncoder passwords,EntityManager em,
+        FieldCrypto crypto,ObjectMapper json,EntityManager em,
         TransferRequestLimiter limiter,TransactionCursor cursors,AccountPolicy policy,StepUpLimiter stepUpLimiter) {
         this.policy=policy;this.stepUpLimiter=stepUpLimiter;
         this.current=current;this.users=users;this.accounts=accounts;this.previews=previews;this.actions=actions;
         this.records=records;this.keys=keys;this.engine=engine;this.crypto=crypto;this.json=json;
-        this.passwords=passwords;this.em=em;this.limiter=limiter;this.cursors=cursors;
+        this.em=em;this.limiter=limiter;this.cursors=cursors;
     }
     private static Instant now(){return Instant.now().truncatedTo(ChronoUnit.MICROS);}
     private static String money(BigDecimal n){return n.setScale(2).toPlainString();}
@@ -83,9 +81,8 @@ class TransferService {
     }
     @Transactional(noRollbackFor=PinFailure.class)
     public StepUpView stepUp(StepUpRequest r){
-        stepUpLimiter.request(current.id());
+        stepUpLimiter.pinRequest(current.id());
         BankUser u=lockedUser();TransferPreview p=ownedPreview(r.targetId(),u.id);usable(p);
-        stepUpLimiter.verify(u.id,()->r.password().getBytes(StandardCharsets.UTF_8).length<=72 && passwords.matches(r.password(),u.passwordHash));
         Account source=accounts.findLockedById(p.source.id).orElseThrow();em.refresh(source,LockModeType.PESSIMISTIC_WRITE);
         AccountPolicy.debit(source);
         // PIN failure is the only persisted mutation if verification fails.
@@ -93,7 +90,7 @@ class TransferService {
         byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         TransferAction a=new TransferAction();a.tokenHash=SecurityConfig.hash(token);a.user=u;a.preview=p;
         a.expiresAt=p.expiresAt;a.accountSecurityVersion=source.securityVersion;actions.save(a);
-        return new StepUpView(token,a.expiresAt,source.pinHash==null?"PASSWORD_RECHECK":"PASSWORD_AND_ACCOUNT_PIN");
+        return new StepUpView(token,a.expiresAt,"ACCOUNT_PIN");
     }
     private String key(String raw){
         try{if(raw==null||!UUID.fromString(raw).toString().equals(raw))throw new IllegalArgumentException();return raw;}
@@ -112,7 +109,7 @@ class TransferService {
         TransferPreview p=ownedPreview(r.previewId(),u.id);usable(p);
         TransferAction a=actions.findById(SecurityConfig.hash(r.actionToken())).orElse(null);
         if(a==null||!a.user.id.equals(u.id)||!a.preview.id.equals(p.id)||!"TRANSFER".equals(a.purpose)||a.consumed||!now().isBefore(a.expiresAt))
-            throw new ApiException(HttpStatus.FORBIDDEN,"ACTION_TOKEN_INVALID","이 확인 건에 대한 비밀번호 재확인이 필요합니다.");
+            throw new ApiException(HttpStatus.FORBIDDEN,"ACTION_TOKEN_INVALID","이 확인 건에 대한 계좌 PIN 재확인이 필요합니다.");
         TransferSnapshot snapshot=decrypt("transfer_previews.snapshot",p.id,p.snapshotEncrypted);
         // Recheck live balances and account state under the shared locks. Preview never reserves money.
         var posting=engine.post(u.id,p.source,p.target,p.amount,a.accountSecurityVersion);

@@ -38,12 +38,12 @@ class Stage6ProductsIntegrationTest {
     void deposit(Customer c,String amount)throws Exception{call(auth(body(post("/api/v2/demo/deposits"),Map.of("accountNumber",c.number(),"amount",amount)),c).header("Idempotency-Key",key()),200);}
     Map<String,Object> previewBody(Customer a,Customer b,Object amount){return Map.of("fromAccountId",a.id(),"bankCode","LOCAL","toAccountNumber",b.number(),"amount",amount,"memo","점심 정산");}
     JsonNode preview(Customer a,Customer b,String amount)throws Exception{return call(auth(body(post("/api/v2/transfers/previews"),previewBody(a,b,amount)),a),201);}
-    String grant(Customer a,String id)throws Exception{return call(auth(body(post("/api/v2/auth/step-up"),Map.of("password","LongPassword123!","pin","4826","purpose","TRANSFER","targetId",id)),a),200).path("actionToken").asText();}
+    String grant(Customer a,String id)throws Exception{return call(auth(body(post("/api/v2/auth/step-up"),Map.of("pin","4826","purpose","TRANSFER","targetId",id)),a),200).path("actionToken").asText();}
     MockHttpServletRequestBuilder execute(Customer a,String p,String token,String k)throws Exception{return auth(body(post("/api/v2/transfers"),Map.of("previewId",p,"actionToken",token)),a).header("Idempotency-Key",k);}
     String balance(Customer a)throws Exception{return call(auth(get("/api/v2/accounts/"+a.id()),a),200).path("balance").asText();}
     void legacy(Customer a,Customer b,String amount)throws Exception{call(auth(body(post("/api/transfers"),Map.of("fromAccount",a.number(),"toAccount",b.number(),"amount",amount)),a).header("Idempotency-Key",key()),200);}
 
- Map<String,Object> joinBody(Customer a,String product,String amount){return Map.of("sourceAccountId",a.id(),"productId",product,"amount",amount,"termsVersion",SavingsService.TERMS,"password","LongPassword123!","pin","4826");}
+ Map<String,Object> joinBody(Customer a,String product,String amount){return Map.of("sourceAccountId",a.id(),"productId",product,"amount",amount,"termsVersion",SavingsService.TERMS,"pin","4826");}
  JsonNode join(Customer a,String product,String amount)throws Exception{return call(auth(body(post("/api/v2/savings"),joinBody(a,product,amount)),a).header("Idempotency-Key",key()),200);}
  Map<String,Object> closeBody(Customer a,JsonNode q){return Map.of("targetAccountId",a.id(),"version",q.path("version").asLong(),"quoteDate",q.path("quoteDate").asText(),"quoteToken",q.path("quoteToken").asText(),"password","LongPassword123!","pin","4826");}
  JsonNode quote(Customer a,String id)throws Exception{return call(auth(get("/api/v2/savings/"+id+"/closure-quote").param("targetAccountId",a.id()),a),200);}
@@ -86,13 +86,13 @@ class Stage6ProductsIntegrationTest {
   call(auth(body(post("/api/v2/auth/step-up"),Map.of("purpose","DEBIT_SETTING","targetId",id,"password","LongPassword123!","pin","4826","changes",Map.of("version",0,"enabled",true))),a),409);
   assertEquals("0.00",call(auth(get("/api/v2/accounts/"+id),a),200).path("availableBalance").asText());
  }
- @Test void inputTermsPasswordLimitsAndIdempotencyConflicts()throws Exception{
+ @Test void inputTermsPinLimitsAndIdempotencyConflicts()throws Exception{
   var a=customer();deposit(a,"30000");var r=new HashMap<String,Object>(joinBody(a,"MOCK-DEPOSIT-12","10000"));
   r.put("amount",10000);call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),400);
   r.put("amount","1e4");call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),400);
   r.put("amount","10000");r.put("termsVersion","old");call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),409);
-  r.put("termsVersion",SavingsService.TERMS);r.put("password","wrong");call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),401);
-  r.put("password","LongPassword123!");String k=key();call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",k),200);
+  r.put("termsVersion",SavingsService.TERMS);r.put("pin","7391");call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),403);
+  r.put("pin","4826");String k=key();call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",k),200);
   r.put("amount","20000");call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",k),409);
   jdbc.update("UPDATE bank_users SET per_transfer_limit=100 WHERE id=(SELECT owner_id FROM accounts WHERE public_id=?)",a.id());
   call(auth(body(post("/api/v2/savings"),r),a).header("Idempotency-Key",key()),409);assertEquals("20000.00",balance(a));
