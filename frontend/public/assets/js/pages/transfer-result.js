@@ -38,7 +38,6 @@ function init() {
     section.hidden = false;
     try {
       const r = await api.getTransfer(transferId);
-      document.getElementById('d-id').textContent = r.transferId;
       document.getElementById('d-status').textContent = r.status === 'completed' ? '완료' : r.status;
       document.getElementById('d-time').textContent = formatDateTime(r.createdAt);
       document.getElementById('d-from').textContent = r.details.fromAccountNumber;

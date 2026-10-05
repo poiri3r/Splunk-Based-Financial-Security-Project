@@ -6,7 +6,7 @@ import { api } from '../api.js';
 import { requireAuth } from '../session.js';
 import { formatAmount, ACCOUNT_TYPE_LABELS } from '../format.js';
 import {
-  clearErrors, showApiError, el, transferLink, transactionsLink, depositLink, manageLink, savingsDetailLink, pinResetLink,
+  clearErrors, showApiError, el, transferLink, transactionsLink, depositLink, manageLink, savingsDetailLink, pinResetLink, isOpenAccount,
 } from '../ui.js';
 
 if (requireAuth()) init();
@@ -71,7 +71,7 @@ function init() {
     loading.hidden = false;
     refreshButton.disabled = true;
     try {
-      const { items } = await api.listAccounts();
+      const items = (await api.listAccounts()).items.filter(isOpenAccount); // 해지 계좌는 해지계좌조회에서
       // 예적금 계좌 → 가입 ID (상세 화면 링크용). 실패해도 계좌 목록은 보여 준다.
       const subscriptionByAccount = new Map();
       if (items.some((a) => a.accountType !== 'CHECKING')) {

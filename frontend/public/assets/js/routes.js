@@ -17,7 +17,7 @@ export const ROUTES = {
   transferLimit: '/transfer/limit/',
   beneficiaries: '/transfer/beneficiaries/',
   depositSim: '/deposit-sim/',
-  openAccount: '/products/open/',
+  openAccount: '/inquiry/open/',
   productJoin: '/products/join/',
   subscriptions: '/inquiry/products/',
   savingsDetail: '/inquiry/products/detail/',

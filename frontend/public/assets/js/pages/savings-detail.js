@@ -85,6 +85,7 @@ function init() {
     document.getElementById('pay-done').hidden = true;
     if (!payTx) {
       const sourceAccountId = payForm.sourceAccountId.value;
+      // 백엔드 v6.2: 적금 추가 납입은 로그인 비밀번호 + 출금 계좌 PIN을 유지한다(가입만 PIN 단독)
       const password = payForm.password.value;
       const pin = payForm.pin.value;
       if (!sourceAccountId) return showFieldError(payForm, 'sourceAccountId', '출금 계좌를 선택해 주세요.');

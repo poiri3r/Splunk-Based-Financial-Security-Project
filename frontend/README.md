@@ -1,10 +1,10 @@
 # Frontend
 
 가상 은행 **Project Bank**의 웹 화면입니다. 프레임워크 없이 순수 HTML / CSS / JavaScript(ES Modules)로 작성했습니다.
-화면은 **백엔드 v6 계약(`/api/v2`)**에 맞춰 동작합니다. 근거는 저장소의 `bank-backend-v6/` 문서 3종(작업 요청서 R1~R8·A1~A12, 흐름도, 추가 협의서 C1~C4)과 v6 ZIP의 Controller·DTO입니다.
+화면은 **백엔드 v6.1 계약(`/api/v2`)**에 맞춰 동작합니다. 근거는 저장소 `backend/`의 v6.1 소스(Controller·DTO·Service)와 `backend/docs/`의 문서 3종(v6.1 API 명세서, 프론트 흐름도 F1~F13, 프론트 연동 최종 답변서)입니다.
 메뉴 구성을 위한 준비 중 화면을 합쳐 71개 경로가 있습니다.
 
-- 백엔드 v6에 없는 기능(접속 기록, 회원탈퇴, 부동산 시세 API, 계좌개설 부가 옵션)은 추가 협의 C4에 따라 **준비 중**이거나 화면에서 뺐습니다. 없는 API를 호출하지 않습니다.
+- 백엔드 v6.1에 없는 기능(접속 기록, 회원탈퇴, 부동산 시세 API, 계좌개설 부가 옵션)은 추가 협의 C4에 따라 **준비 중**이거나 화면에서 뺐습니다. 없는 API를 호출하지 않습니다.
 - 부동산 시세는 정적 JSON + 카카오맵 시연 화면입니다(실제 시세 아님).
 
 ## 실행
@@ -27,7 +27,7 @@ npm run dev
 ## 목(mock) 모드와 실제 서버
 
 > **백엔드 담당자 참고:** 저장소에는 `USE_MOCK = true`로 올라가 있습니다. 백엔드 없이도 모든 화면이 동작하게 하기 위해서입니다.
-> 목 서버(`public/mock/mock.js`)는 v6 Controller·DTO·Service를 읽고 흉내 낸 것이며 실서버 확인을 대신하지 않습니다(2026-10-03 v6 실서버로 브라우저 E2E 29개 항목 확인).
+> 목 서버(`public/mock/mock.js`)는 v6.1 Controller·DTO·Service를 읽고 흉내 낸 것이며 실서버 확인을 대신하지 않습니다(2026-10-03 v6 실서버 브라우저 E2E 29개, 2026-10-04 v6.1 변경분 실서버 확인).
 
 `public/assets/js/config.js`의 `USE_MOCK` 값으로 전환합니다. 다른 코드는 바꿀 필요가 없습니다.
 
@@ -36,17 +36,17 @@ npm run dev
 | `true` (현재) | 백엔드 없이 `public/mock/mock.js`가 응답합니다. 화면 오른쪽 아래에 MOCK 패널이 나타납니다. |
 | `false` | 같은 PC의 8080에서 실행 중인 백엔드로 요청합니다. `http://localhost:5500/health` → `{"status":"ok"}`로 연결을 확인합니다. |
 
-목 모드의 초기 데이터는 백엔드 v6 demo 프로필(`DemoData.java`)과 같습니다.
+목 모드의 초기 데이터는 백엔드 v6.1 demo 프로필(`DemoData.java`)과 같습니다.
 
 | 아이디 | 비밀번호 | 이름 | 휴대폰 | 계좌 | 계좌 비밀번호 | 초기 잔액 |
 |---|---|---|---|---|---|---|
 | alice | Demo!Alice7392 | 김시연 | +821090002951 | 2000000000000001 | 4826 | 100,000.00 |
 | bob | Demo!Bob5837 | 이시연 | +821090002963 | 2000000000000002 | 7391 | 50,000.00 |
 
-### 실서버(v6)로 확인하기
+### 실서버(v6.1)로 확인하기
 
 ```bash
-cd <bank-backendv6.zip 압축 해제 위치>/bank-backend
+cd backend   # 저장소 루트 기준
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 export BANK_ENCRYPTION_KEY=$(openssl rand -base64 32) BANK_LOOKUP_KEY=$(openssl rand -base64 32)
 export BANK_DEMO_INBOX_KEY=<32자 이상 무작위 값>   # 서버 전용. 프론트 코드·저장소에 넣지 않는다
@@ -130,7 +130,9 @@ public/
 `next`는 같은 오리진의 경로만 허용합니다(`//evil.com`, `https://...` 등은 홈으로 바뀜).
 이것은 화면 이동일 뿐 보안 수단이 아닙니다. HTML은 누구나 받을 수 있고, 데이터는 서버의 401·404가 보호합니다.
 
-API 계약은 백엔드 v6(`bank-backend-v6/`)을 따릅니다. 오류는 `{code, message, field?}`이며 화면은 code로 분기합니다. 401이라도 `REAUTHENTICATION_FAILED`·`LOGIN_FAILED`는 로그아웃하지 않고 `UNAUTHORIZED`만 세션 만료로 처리합니다.
+API 계약은 백엔드 v6.1(`backend/`, `backend/docs/`)을 따릅니다. 오류는 `{code, message, field?}`이며 화면은 code로 분기합니다. 401이라도 `REAUTHENTICATION_FAILED`·`LOGIN_FAILED`는 로그아웃하지 않고 `UNAUTHORIZED`만 세션 만료로 처리합니다(로그인 화면에 재로그인 안내 표시).
+
+재인증(step-up: 이체 승인·계좌 설정·한도 변경)은 사용자 기준으로 비밀번호 실패 5분 5회, 전체 요청 1분 30회 제한을 함께 씁니다. 제한되면 429와 `Retry-After`(초)가 오며, 화면은 남은 시간을 안내하고 승인 버튼을 끕니다(`assets/js/step-up-wait.js`). 대기 후 자동으로 다시 보내지 않습니다. 배포 시 프록시가 `Retry-After` 헤더를 그대로 전달해야 합니다.
 
 ## 카카오맵 (부동산 시세조회)
 

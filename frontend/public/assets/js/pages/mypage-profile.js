@@ -5,7 +5,7 @@
 // - 휴대폰: PROFILE/SMS 모의 확인 → PUT /me/contact { currentPassword, contactGrant } → 204 → 다시 조회.
 // - 현재 비밀번호 불일치는 401 REAUTHENTICATION_FAILED다. 로그아웃하지 않고 이 화면에 남는다(api.js가 code로 구분).
 import { api } from '../api.js';
-import { requireAuth } from '../session.js';
+import { requireAuth, setDisplayName } from '../session.js';
 import { validateName } from '../validate.js';
 import { formatPhone } from '../format.js';
 import { clearErrors, showFieldError, showApiError, setBusy } from '../ui.js';
@@ -70,6 +70,8 @@ function init() {
     setBusy(button, true, '저장 중…');
     try {
       me = await api.updateProfile({ currentPassword, version: me.version, name, email, phone: me.phone });
+      setDisplayName(me.name); // 이름이 없던 계정이 이름을 보완한 경우 인사말도 바꾼다
+      document.querySelectorAll('[data-username]').forEach((node) => { node.textContent = me.name || node.textContent; });
       profileForm.currentPassword.value = '';
       render();
       document.getElementById('profile-done').hidden = false;

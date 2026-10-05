@@ -30,5 +30,13 @@
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
   </dependencies>
   <!-- mvn package 명령으로 실행 가능한 jar를 만든다. -->
-  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
+<!-- Test-only public fixture keys; never used by the packaged application. -->
+<plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId>
+<configuration><environmentVariables>
+<BANK_ALLOW_PII_MIGRATION>true</BANK_ALLOW_PII_MIGRATION>
+<BANK_ENCRYPTION_KEY>AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=</BANK_ENCRYPTION_KEY>
+<BANK_LOOKUP_KEY>ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=</BANK_LOOKUP_KEY>
+</environmentVariables></configuration></plugin>
+</plugins></build>
 </project>

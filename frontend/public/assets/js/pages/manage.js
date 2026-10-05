@@ -8,8 +8,9 @@ import { requireAuth } from '../session.js';
 import { validatePin, validatePinFormat } from '../validate.js';
 import { formatAmount, ACCOUNT_TYPE_LABELS } from '../format.js';
 import {
-  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, pinResetLink, isDebitCandidate,
+  clearErrors, showFieldError, showFormError, showApiError, setBusy, el, pinResetLink, isDebitCandidate, setAccountTitle, isOpenAccount,
 } from '../ui.js';
+import { bindStepUpWait, noteStepUpLimit } from '../step-up-wait.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,7 +43,7 @@ function init() {
       }
       return el('li', { className: 'account' }, [
         el('div', { className: 'account-info' }, [
-          el('span', { className: 'account-type', textContent: `${ACCOUNT_TYPE_LABELS[a.accountType] ?? a.accountType} · ${a.accountName}${a.status === 'CLOSED' ? ' (해지)' : ''}` }),
+          el('span', { className: 'account-type', textContent: `${ACCOUNT_TYPE_LABELS[a.accountType] ?? a.accountType} · ${a.accountName}` }),
           p.alias ? el('strong', { className: 'account-alias', textContent: p.alias }) : '',
           el('span', { className: 'account-number', textContent: `${a.number} · 순서 ${p.order}` }),
           el('span', { className: 'tags' }, p.hidden ? [el('span', { className: 'tag out', textContent: '숨김' })] : []),
@@ -55,7 +56,7 @@ function init() {
   function renderDetail() {
     const a = selected;
     const p = a.preferences;
-    document.getElementById('m-name').textContent = `${ACCOUNT_TYPE_LABELS[a.accountType] ?? ''} ${p.alias || a.accountName}`;
+    setAccountTitle(document.getElementById('m-name'), a);
     document.getElementById('m-number').textContent = `${a.number} · 잔액 ${formatAmount(a.balance)}`;
     prefForm.alias.value = p.alias ?? '';
     prefForm.order.value = String(p.order);
@@ -80,7 +81,7 @@ function init() {
   }
 
   async function loadAccounts() {
-    accounts = (await api.listAccounts({ includeHidden: true })).items;
+    accounts = (await api.listAccounts({ includeHidden: true })).items.filter(isOpenAccount);
   }
 
   async function select(accountId) {
@@ -130,8 +131,13 @@ function init() {
     if (ok) document.getElementById('pref-done').hidden = false;
   });
 
+  // 출금 등록·계좌 비밀번호 변경은 이체 승인과 같은 step-up 제한을 쓴다(사용자 기준 공유).
+  const debitWait = bindStepUpWait(debitForm, [document.getElementById('debit-submit')]);
+  const pinWait = bindStepUpWait(pinForm, [pinForm.querySelector('button[type="submit"]')]);
+
   debitForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (debitWait.isWaiting()) return;
     clearErrors(debitForm);
     const password = debitForm.password.value;
     if (!password) return showFieldError(debitForm, 'password', '로그인 비밀번호를 입력해 주세요.');
@@ -146,17 +152,21 @@ function init() {
     } catch (err) {
       debitForm.password.value = '';
       if (err.code === 'VERSION_CONFLICT') await reload();
+      if (noteStepUpLimit(err)) return;
       showApiError(debitForm, err, {
         REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
         ACTION_TOKEN_INVALID: { message: '승인이 만료되었습니다. 다시 시도해 주세요.' },
       });
     } finally {
       setBusy(button, false);
+      debitWait.sync();
+      pinWait.sync();
     }
   });
 
   pinForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (pinWait.isWaiting()) return;
     hideDone();
     clearErrors(pinForm);
     const p = selected.preferences;
@@ -185,6 +195,7 @@ function init() {
       pinForm.password.value = '';
       pinForm.currentPin.value = '';
       if (err.code === 'VERSION_CONFLICT' || err.code === 'PIN_LOCKED') await reload();
+      if (noteStepUpLimit(err)) return;
       showApiError(pinForm, err, {
         REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
         PIN_INVALID: { field: 'currentPin', message: '현재 계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.' },
@@ -193,6 +204,8 @@ function init() {
       });
     } finally {
       setBusy(button, false);
+      debitWait.sync();
+      pinWait.sync();
     }
   });
 

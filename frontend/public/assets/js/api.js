@@ -5,7 +5,7 @@
 import {
   API_BASE, USE_MOCK, TIMEOUT_MS, IDEMPOTENT_RETRY_DELAYS_MS, GET_RETRY_DELAYS_MS,
 } from './config.js';
-import { getToken, clearSession, redirectToLogin } from './session.js';
+import { getToken, clearSession, redirectToLogin, setNotice } from './session.js';
 import { IDEMPOTENCY_ERRORS } from './errors.js';
 
 // 목은 페이지 로드 시 바로 불러온다(개발 패널이 첫 요청 전에 보여야 한다).
@@ -37,16 +37,20 @@ const MSG_SERVER = '서버에 일시적인 문제가 발생했습니다.';
 const MSG_NETWORK = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.';
 const MSG_TIMEOUT = '서버 응답 시간이 초과되었습니다.';
 const MSG_PARSE = '서버 응답을 해석할 수 없습니다.';
+// v6.1 답변서 6절: 토큰을 붙인 요청의 UNAUTHORIZED 뒤 로그인 화면에 보여 줄 안내
+const MSG_RELOGIN = '로그인이 만료되었거나 보안 설정이 변경되었습니다. 다시 로그인해 주세요.';
 
 export class ApiError extends Error {
   // kind: 'http' | 'network' | 'timeout' | 'parse'
-  constructor({ status = 0, code = null, message, field = null, kind }) {
+  // retryAfter: 429의 Retry-After(초). 지금은 step-up만 보낸다. 헤더가 없거나 해석할 수 없으면 null.
+  constructor({ status = 0, code = null, message, field = null, kind, retryAfter = null }) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.field = field;
     this.kind = kind;
+    this.retryAfter = retryAfter;
     this.handled = false; // true면 api.js가 이미 처리했다(예: 로그인 페이지로 이동). 화면에 표시하지 않는다.
   }
 }
@@ -65,7 +69,14 @@ function tryParseJson(text) {
   }
 }
 
-function errorFromResponse(status, text) {
+// Retry-After는 양의 정수 초만 받는다(백엔드는 올림한 정수 초를 보낸다). HTTP 날짜 형식은 쓰지 않으므로 무시한다.
+function parseRetryAfter(value) {
+  if (!value || !/^\d+$/.test(value.trim())) return null;
+  const seconds = Number(value.trim());
+  return seconds > 0 ? seconds : null;
+}
+
+function errorFromResponse(status, text, headers) {
   const parsed = tryParseJson(text);
   const body = parsed.ok && parsed.value && typeof parsed.value === 'object' ? parsed.value : null;
   const code = body && typeof body.code === 'string' ? body.code : null;
@@ -75,6 +86,7 @@ function errorFromResponse(status, text) {
     message: body && typeof body.message === 'string' && body.message ? body.message : defaultMessage(status),
     field: body && typeof body.field === 'string' ? body.field : null,
     kind: 'http',
+    retryAfter: status === 429 ? parseRetryAfter(headers.get('Retry-After')) : null,
   });
 }
 
@@ -131,11 +143,12 @@ async function attemptOnce({ method, path, body, auth, headers: extraHeaders }) 
     return parsed.value;
   }
 
-  const err = errorFromResponse(response.status, text);
+  const err = errorFromResponse(response.status, text, response.headers);
   // 토큰을 붙인 요청의 UNAUTHORIZED만 세션 만료로 본다.
   // 같은 401이라도 REAUTHENTICATION_FAILED(현재 비밀번호 불일치)·LOGIN_FAILED는 로그아웃하지 않는다(작업 요청서 A2).
   if (auth && err.code === 'UNAUTHORIZED') {
     clearSession();
+    setNotice(MSG_RELOGIN);
     err.handled = true;
     redirectToLogin();
   }
@@ -318,8 +331,9 @@ export const api = {
 
   // ---- 예금·적금 (R5·A6) ----
   savingsProducts: () => get(`${V2}/savings-products`, false),
-  newSavingsJoin: ({ productId, sourceAccountId, amount, termsVersion, password, pin }) =>
-    new IdempotentTx(`${V2}/savings`, { productId, sourceAccountId, amount, termsVersion, password, pin }),
+  // 백엔드 v6.2: 가입은 출금 계좌 PIN만, 추가 납입은 로그인 비밀번호 + PIN, 해지는 로그인 비밀번호.
+  newSavingsJoin: ({ productId, sourceAccountId, amount, termsVersion, pin }) =>
+    new IdempotentTx(`${V2}/savings`, { productId, sourceAccountId, amount, termsVersion, pin }),
   listSavings: () => get(`${V2}/savings`),
   getSavings: (subscriptionId) => get(`${V2}/savings/${id(subscriptionId)}`),
   newSavingsPayment: (subscriptionId, { sourceAccountId, version, password, pin }) =>

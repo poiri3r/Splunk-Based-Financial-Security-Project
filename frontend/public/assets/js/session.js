@@ -7,7 +7,8 @@ import { ROUTES } from './routes.js';
 
 const TOKEN_KEY = 'token';
 const EXPIRES_AT_KEY = 'expiresAt';
-const USERNAME_KEY = 'username'; // 화면 표시용. 서버가 준 값이 아니라 로그인 폼 입력값이다.
+const USERNAME_KEY = 'username'; // 로그인 폼 입력값(아이디). 비밀번호 규칙 검사·재인증 대기 구분에 쓴다.
+const DISPLAY_NAME_KEY = 'displayName'; // 화면 인사말용 본명. 로그인 직후 GET /auth/me의 name
 const NOTICE_KEY = 'pb-notice';
 
 export function saveSession(token, expiresIn, username) {
@@ -20,6 +21,7 @@ export function clearSession() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(EXPIRES_AT_KEY);
   sessionStorage.removeItem(USERNAME_KEY);
+  sessionStorage.removeItem(DISPLAY_NAME_KEY);
 }
 
 // 유효한 토큰을 돌려준다. 없거나 절대 만료가 지났으면 세션을 지우고 null.
@@ -35,6 +37,15 @@ export function getToken() {
 
 export function getUsername() {
   return sessionStorage.getItem(USERNAME_KEY) || '';
+}
+
+// 헤더·메인 인사말에 보여 줄 이름. 이름이 없는 계정(가입 전 데이터 등)은 아이디로 대신한다.
+export function setDisplayName(name) {
+  if (typeof name === 'string' && name.trim()) sessionStorage.setItem(DISPLAY_NAME_KEY, name.trim());
+}
+export const hasDisplayName = () => Boolean(sessionStorage.getItem(DISPLAY_NAME_KEY));
+export function getDisplayName() {
+  return sessionStorage.getItem(DISPLAY_NAME_KEY) || getUsername();
 }
 
 // 다음 페이지에 한 번만 보여 줄 안내(예: 서버 로그아웃 확인 실패). 비밀값을 넣지 않는다.

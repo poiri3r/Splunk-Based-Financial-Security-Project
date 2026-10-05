@@ -1,6 +1,6 @@
 // 목 서버. api.js의 transport()가 USE_MOCK일 때 handle(request)를 호출한다.
 // 반드시 진짜 Response를 돌려줘 실제 서버와 같은 파싱·오류 처리 경로를 타게 한다.
-// 계약은 백엔드 v6(bank-backend-v6 ZIP의 Controller·DTO·Service)를 따른다. 실서버 확인을 대신하지 않는다.
+// 계약은 백엔드 v6.2(backend/ 소스의 Controller·DTO·Service, docs/V6_1_CHANGES.md·V6_2_PIN_ONLY.md)를 따른다. 실서버 확인을 대신하지 않는다.
 //
 // 상태는 sessionStorage에 저장한다(멀티 페이지라 메모리는 페이지 이동 시 사라진다).
 //   mock-db    : 사용자·계좌·원장·토큰·멱등키·예적금 등 (JSON)
@@ -9,7 +9,8 @@
 // 금액은 서버의 BigDecimal을 흉내 내기 위해 내부에서 BigInt(1/100원 단위)로 계산하고, 응답에는 십진 문자열("1000.00")로 넣는다.
 // 서버의 트랜잭션 롤백은 흉내 내지 않는다. 그래서 각 핸들러는 모든 검사를 끝낸 뒤에만 상태를 바꾼다.
 // 예외: 로그인 실패·PIN 오류·인증번호 오류 횟수는 서버도 실패 응답과 함께 저장한다(noRollbackFor).
-// 단순화: 요청 제한(429)은 인증번호 재요청(1분 1회), 본인 재확인(step-up 5분 5회), 예적금 비밀번호 확인(5분 5회)만 흉내 낸다.
+// 단순화: 요청 제한(429)은 인증번호 재요청(1분 1회), step-up(비밀번호 실패 5분 5회 + 전체 1분 30회, Retry-After),
+// 예적금 비밀번호 확인(5분 5회)만 흉내 낸다.
 
 import { TIMEOUT_MS } from '../assets/js/config.js';
 
@@ -217,14 +218,15 @@ function json(status, value) {
 const empty = (status = 204) => new Response(null, { status });
 
 class Fail extends Error {
-  constructor(status, code, message, field) {
+  constructor(status, code, message, field, headers) {
     super(message);
     this.status = status;
     this.code = code;
     this.field = field;
+    this.headers = headers; // 예: step-up 제한의 Retry-After
   }
 }
-const fail = (status, code, message, field) => { throw new Fail(status, code, message, field); };
+const fail = (status, code, message, field, headers) => { throw new Fail(status, code, message, field, headers); };
 const invalid = (field, message = MSG_INVALID) => fail(400, 'INVALID_INPUT', message, field);
 
 // DTO 검증: 여러 필드가 틀리면 필드명 순으로 한 건만 (ApiErrors.handleMethodArgumentNotValid)
@@ -393,13 +395,11 @@ function maskName(name) {
 // 멱등 처리 공통
 // 같은 키·같은 요청 → 저장된 응답 재반환(상태 변화 없음) / 같은 키·다른 요청 → 409 / 새 키 → 실행 후 성공만 기록
 
-function idempotent(ctx, { scope, op, keyError = 'IDEMPOTENCY_KEY_INVALID', status = 200 }, execute) {
+// v6.1: 7개 멱등 POST 모두 키 누락·형식 오류는 400 IDEMPOTENCY_KEY_INVALID (DTO 검증 뒤에 검사한다)
+function idempotent(ctx, { scope, op, status = 200 }, execute) {
   const { db, headers, rawBody } = ctx;
   const key = headers.get('Idempotency-Key');
-  if (!key || !UUID_RE.test(key)) {
-    if (keyError === 'INVALID_INPUT') invalid();
-    fail(400, keyError, 'Idempotency-Key는 소문자 표준 UUID여야 합니다.');
-  }
+  if (!key || !UUID_RE.test(key)) fail(400, 'IDEMPOTENCY_KEY_INVALID', 'Idempotency-Key는 소문자 표준 UUID여야 합니다.');
   const store = (db.idempotency[scope] ||= {});
   const saved = store[key];
   if (saved) {
@@ -517,7 +517,7 @@ function register(ctx) {
     username: blank(body.username) || !/^[a-zA-Z0-9_]{3,32}$/.test(body.username),
   });
   if (new TextEncoder().encode(body.password).length > 72) invalid();
-  return idempotent(ctx, { scope: 'register', op: 'REGISTER', keyError: 'INVALID_INPUT', status: 201 }, () => {
+  return idempotent(ctx, { scope: 'register', op: 'REGISTER', status: 201 }, () => {
     const versions = body.termsVersions;
     if (Object.keys(versions).length !== 2 || versions.SERVICE !== SIGNUP_TERMS.SERVICE || versions.PRIVACY !== SIGNUP_TERMS.PRIVACY) {
       fail(409, 'TERMS_VERSION_REQUIRED', '현재 필수 약관에 동의해 주세요.');
@@ -623,7 +623,7 @@ function resetPassword({ db, body }) {
   });
   const g = recoveryGrant(db, body.resetToken, 'PASSWORD');
   const u = db.users[g.username];
-  passwordPolicy(body.newPassword, g.username, u.phone, 'password');
+  passwordPolicy(body.newPassword, g.username, u.phone, 'newPassword');
   if (body.newPassword === u.password) weak('newPassword');
   u.password = body.newPassword;
   u.loginFailures = 0;
@@ -705,9 +705,8 @@ function changePassword({ db, user, body }) {
     newPassword: blank(body.newPassword) || body.newPassword.length < 12 || body.newPassword.length > 64,
   });
   const u = db.users[user];
-  if (new TextEncoder().encode(body.newPassword).length > 72) invalid();
   reauth(u, body.currentPassword);
-  passwordPolicy(body.newPassword, user, u.phone);
+  passwordPolicy(body.newPassword, user, u.phone, 'newPassword'); // 72바이트 초과도 여기서 WEAK_CREDENTIAL(newPassword)
   if (body.newPassword === u.password) weak('newPassword');
   u.password = body.newPassword;
   u.loginFailures = 0;
@@ -842,27 +841,71 @@ function checkLimitChange(u, c) {
   if (per > BigInt(u.perTransfer) || daily > BigInt(u.daily)) fail(409, 'LIMIT_INCREASE_NOT_ALLOWED', '이 화면에서는 한도 감액만 가능합니다.');
 }
 
+// step-up 전용 제한 (StepUpLimiter, v6.1). 이체 승인·계좌 설정·한도 변경이 사용자별로 공유한다.
+// - 전체 요청: 최근 1분 30회까지. 서비스에 들어온 요청은 성공·실패와 관계없이 센다. 거절된 요청은 세지 않는다.
+// - 비밀번호 실패: 최근 5분 5회째 실패 시점부터 5분 차단. 올바른 비밀번호는 횟수를 늘리지도 지우지도 않는다.
+// - 차단 중에는 비밀번호를 비교하지 않고, 차단 시각도 늘리지 않는다. 두 제한이 겹치면 더 긴 대기 시간을 준다.
+// 서버도 메모리 기준이라 재시작하면 초기화된다. 목은 DB(sessionStorage)에 둔다.
+const STEP_UP_MINUTE = 60 * 1000;
+const STEP_UP_BLOCK = 300 * 1000;
+function stepUpState(db, user, now) {
+  const s = ((db.stepUp ||= {})[user] ||= { requests: [], failures: [], blockedUntil: 0 });
+  s.requests = s.requests.filter((t) => t > now - STEP_UP_MINUTE);
+  s.failures = s.failures.filter((t) => t > now - STEP_UP_BLOCK);
+  return s;
+}
+function stepUpRemaining(s, now, request) {
+  let end = s.blockedUntil;
+  if (request && s.requests.length >= 30) end = Math.max(end, s.requests[0] + STEP_UP_MINUTE);
+  return end > now ? Math.max(1, Math.ceil((end - now) / 1000)) : 0;
+}
+const stepUpLimited = (seconds) => fail(429, 'RATE_LIMITED', '잠시 후 다시 시도해 주세요.', undefined, { 'Retry-After': String(seconds) });
+// checkPasswordBlock=false: PIN 이체 승인(v6.2 pinRequest). 설정 승인의 비밀번호 차단과 무관하게 요청량만 본다.
+function stepUpRequest(db, user, checkPasswordBlock = true) {
+  const now = Date.now();
+  const s = stepUpState(db, user, now);
+  const wait = checkPasswordBlock ? stepUpRemaining(s, now, true)
+    : (s.requests.length >= 30 ? Math.max(1, Math.ceil((s.requests[0] + STEP_UP_MINUTE - now) / 1000)) : 0);
+  if (wait > 0) stepUpLimited(wait);
+  s.requests.push(now);
+}
+function stepUpVerify(db, user, password) {
+  const now = Date.now();
+  const s = stepUpState(db, user, now);
+  const wait = stepUpRemaining(s, now, false);
+  if (wait > 0) stepUpLimited(Math.max(wait, stepUpRemaining(s, now, true)));
+  const u = db.users[user];
+  if (str(password) && new TextEncoder().encode(password).length <= 72 && password === u.password) return;
+  s.failures.push(now);
+  if (s.failures.length >= 5) {
+    s.blockedUntil = now + STEP_UP_BLOCK;
+    stepUpLimited(Math.max(300, stepUpRemaining(s, now, true)));
+  }
+  fail(401, 'REAUTHENTICATION_FAILED', '비밀번호가 올바르지 않습니다.');
+}
+
+// 이체 승인(TRANSFER)은 계좌 비밀번호(PIN)만 확인한다(v6.2, password가 와도 무시). 설정 승인은 계속 로그인 비밀번호 필수.
 function stepUp(ctx) {
   const { db, user, body } = ctx;
+  const transfer = body.purpose === 'TRANSFER';
   check({
-    password: blank(body.password) || tooLong(body.password, 64),
+    password: !transfer && (blank(body.password) || tooLong(body.password, 64)),
     pin: optPattern(body.pin, /^\d{4}$/),
     purpose: blank(body.purpose) || !/^(TRANSFER|ACCOUNT_PIN|DEBIT_SETTING|TRANSFER_LIMITS)$/.test(body.purpose),
     targetId: !str(body.targetId) || !UUID_ANY_RE.test(body.targetId),
   });
-  limit(db, `step-up:${user}`, 5, 300);
+  stepUpRequest(db, user, !transfer);
   const u = db.users[user];
   if (body.purpose === 'TRANSFER') {
     const p = db.previews[body.targetId];
     if (!p || p.username !== user) fail(404, 'TRANSFER_NOT_FOUND', '이체 정보가 없거나 접근할 수 없습니다.');
     previewUsable(p);
-    reauth(u, body.password);
     const source = db.accounts[p.sourceId];
     debitAllowed(source);
     verifyPin(source, body.pin);
     const token = secret();
     db.transferActions[token] = { username: user, previewId: body.targetId, expiresAt: p.expiresAt, securityVersion: source.securityVersion, consumed: false };
-    return json(200, { actionToken: token, expiresAt: isoAt(p.expiresAt), authenticationMethod: 'PASSWORD_AND_ACCOUNT_PIN' });
+    return json(200, { actionToken: token, expiresAt: isoAt(p.expiresAt), authenticationMethod: 'ACCOUNT_PIN' });
   }
   const changes = parseIntent(body.purpose, body.changes);
   if (body.purpose === 'TRANSFER_LIMITS') {
@@ -873,7 +916,7 @@ function stepUp(ctx) {
     checking(a);
     if (changes.version !== a.settingsVersion) versionConflict();
   }
-  reauth(u, body.password);
+  stepUpVerify(db, user, body.password);
   const token = secret();
   const expiresAt = Date.now() + GRANT_SEC * 1000;
   db.settingActions[token] = { username: user, purpose: body.purpose, targetId: body.targetId, payloadHash: intentHash(body.purpose, changes), expiresAt, consumed: false };
@@ -1196,10 +1239,6 @@ function funding(db, user, from, amount) {
   if (BigInt(from.balance) < amount) conflict('INSUFFICIENT_BALANCE');
   checkLimits(db, user, amount);
 }
-const savingsKey = { keyError: 'INVALID_IDEMPOTENCY_KEY' };
-function savingsHeader(headers) {
-  if (!headers.get('Idempotency-Key')) invalid(undefined, '요청 경로, 방식과 형식을 확인해 주세요.');
-}
 
 function listSavings({ db, user }) {
   const items = Object.entries(db.savings).filter(([, c]) => c.username === user)
@@ -1210,11 +1249,9 @@ const getSavings = ({ db, user, params }) => json(200, savingsView(db, params[0]
 
 function joinSavings(ctx) {
   const { db, user, body, headers } = ctx;
-  savingsHeader(headers);
   const amountBad = moneyField(body.amount, 'amount', /^[1-9]\d{0,7}(\.\d{1,2})?$/);
   check({
     amount: amountBad,
-    password: blank(body.password) || tooLong(body.password, 64),
     pin: optPattern(body.pin, /^\d{4}$/),
     productId: blank(body.productId),
     sourceAccountId: !str(body.sourceAccountId) || !UUID_ANY_RE.test(body.sourceAccountId),
@@ -1222,7 +1259,7 @@ function joinSavings(ctx) {
   });
   const u = db.users[user];
   banking(u);
-  return idempotent(ctx, { scope: user, op: 'SAVINGS_JOIN', ...savingsKey }, () => {
+  return idempotent(ctx, { scope: user, op: 'SAVINGS_JOIN' }, () => {
     const product = PRODUCTS.find((p) => p.productId === body.productId);
     if (!product) fail(400, 'PRODUCT_NOT_FOUND', '상품을 확인해 주세요.');
     if (body.termsVersion !== SAVINGS_TERMS) conflict('TERMS_VERSION_MISMATCH');
@@ -1230,8 +1267,8 @@ function joinSavings(ctx) {
     if (amount < cents(product.minimum) || amount > cents(product.maximum)) conflict('PRODUCT_AMOUNT_INVALID');
     const source = ownedAccount(db, user, body.sourceAccountId);
     funding(db, user, source, amount);
-    savingsAuth(db, user, body.password);
-    verifyPin(source, body.pin);
+    limit(db, `savings-join:${user}`, 30, 60); // v6.2: 가입 요청 사용자별 1분 30회
+    verifyPin(source, body.pin); // v6.2: 가입은 출금 계좌 PIN만 확인
     let number;
     do number = `3${randomDigits(15)}`; while (accountByNumber(db, number));
     const holdingId = createAccount(db, user, { number, accountName: product.name, accountType: product.accountType, debitEnabled: false });
@@ -1260,16 +1297,15 @@ function period(opened, day) {
 
 function paySavings(ctx) {
   const { db, user, params, body, headers } = ctx;
-  savingsHeader(headers);
   check({
-    password: blank(body.password) || tooLong(body.password, 64),
+    password: blank(body.password) || tooLong(body.password, 64), // v6.2: 추가 납입은 로그인 비밀번호 유지
     pin: optPattern(body.pin, /^\d{4}$/),
     sourceAccountId: !str(body.sourceAccountId) || !UUID_ANY_RE.test(body.sourceAccountId),
     version: !Number.isInteger(body.version) || body.version < 0,
   });
   const u = db.users[user];
   banking(u);
-  return idempotent(ctx, { scope: user, op: 'SAVINGS_PAY', ...savingsKey }, () => {
+  return idempotent(ctx, { scope: user, op: 'SAVINGS_PAY' }, () => {
     const c = ownedSavings(db, user, params[0]);
     if (c.status !== 'ACTIVE') conflict('SAVINGS_CLOSED');
     if (body.version !== c.version) versionConflict();
@@ -1330,7 +1366,6 @@ function closureQuote({ db, user, params, query }) {
 
 function closeSavings(ctx) {
   const { db, user, params, body, headers } = ctx;
-  savingsHeader(headers);
   check({
     password: blank(body.password) || tooLong(body.password, 64),
     quoteDate: !str(body.quoteDate) || !DAY_RE.test(body.quoteDate),
@@ -1340,7 +1375,7 @@ function closeSavings(ctx) {
   });
   const u = db.users[user];
   banking(u);
-  return idempotent(ctx, { scope: user, op: 'SAVINGS_CLOSE', ...savingsKey }, () => {
+  return idempotent(ctx, { scope: user, op: 'SAVINGS_CLOSE' }, () => {
     const c = ownedSavings(db, user, params[0]);
     if (c.status !== 'ACTIVE') conflict('SAVINGS_CLOSED');
     if (body.version !== c.version) versionConflict();
@@ -1533,6 +1568,7 @@ export async function handle(request) {
     const body = { code: err.code, message: err.message };
     if (err.field) body.field = err.field; // 특정할 수 없으면 키 자체를 생략한다
     response = json(err.status, body);
+    for (const [name, value] of Object.entries(err.headers ?? {})) response.headers.set(name, value);
   }
   // 실패 응답에도 저장한다: 로그인 실패·PIN 오류·인증번호 오류 횟수는 서버도 남긴다. 그 밖의 핸들러는 검사 후에만 상태를 바꾼다.
   if (ctx.db) saveDb(ctx.db);

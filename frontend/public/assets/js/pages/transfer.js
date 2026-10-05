@@ -1,6 +1,7 @@
 // 즉시이체 (작업 요청서 A3·A8·R8, 흐름도 F6·F13).
 // 1) 입력 → 수취 계좌 확인(receiver-validation) → 서버 확인 건(preview, 5분) 생성
-// 2) 확인 화면은 입력값이 아니라 서버 preview 응답을 그린다 → 로그인 비밀번호·계좌 비밀번호로 승인(step-up) → actionToken
+// 2) 확인 화면은 입력값이 아니라 서버 preview 응답을 그린다 → 계좌 비밀번호(PIN)로 승인(step-up) → actionToken
+//    (2026-10-04 백엔드와 합의: 이체 승인에서 로그인 비밀번호를 뺀다. 백엔드 확정 계약이 오면 대조할 것)
 // 3) 멱등키로 실행. 결과가 불확실하면 승인을 새로 받지 않고 같은 키·같은 본문으로 다시 보낸다.
 // 입력을 바꾸면 새 preview와 새 승인이 필요하다. preview는 잔액을 예약하지 않으므로 실행 때 서버가 다시 검사한다.
 import { api } from '../api.js';
@@ -11,6 +12,7 @@ import {
   clearErrors, showFieldError, showFormError, showApiError, setBusy, el, guardUnload, setDisabled,
   transactionsLink, transferResultLink, accountLabel, isDebitCandidate,
 } from '../ui.js';
+import { bindStepUpWait, noteStepUpLimit } from '../step-up-wait.js';
 
 if (requireAuth()) init();
 
@@ -32,6 +34,8 @@ function init() {
   let actionToken = null; // 이 preview에 대한 승인 권한
   let tx = null; // 실행 요청 한 건(멱등키 + 고정 본문)
   let timer = null;
+  // 승인(step-up)을 보내야 하는 상태에서만 대기 제한을 건다. 결과 불명 재시도·이미 승인받은 실행은 step-up이 아니다.
+  const stepUpWait = bindStepUpWait(approveForm, [sendButton], { isApplicable: () => Boolean(preview) && !tx && !actionToken });
 
   function showStep(name) {
     for (const [key, node] of Object.entries(steps)) node.hidden = key !== name;
@@ -126,12 +130,13 @@ function init() {
     timer = setInterval(tick, 1000);
     tick();
     showStep('confirm');
-    approveForm.password.focus();
+    stepUpWait.sync(); // 다른 화면에서 걸린 제한도 이어서 보여 준다
+    approveForm.pin.focus();
   }
 
   // 결과 불명 중에는 수정·승인 입력을 막고 같은 요청으로만 다시 보낸다.
   function lockConfirm(locked) {
-    setDisabled([editButton, approveForm.password, approveForm.pin], locked);
+    setDisabled([editButton, approveForm.pin], locked);
     uncertainBox.hidden = !locked;
     guardUnload(locked);
     sendButton.textContent = locked ? '같은 내용으로 다시 시도' : '이체하기';
@@ -140,15 +145,12 @@ function init() {
   editButton.addEventListener('click', () => backToInput());
 
   async function approve() {
-    const password = approveForm.password.value;
     const pin = approveForm.pin.value;
-    if (!password) { showFieldError(approveForm, 'password', '로그인 비밀번호를 입력해 주세요.'); return false; }
     const pinError = validatePinFormat(pin);
     if (pinError) { showFieldError(approveForm, 'pin', pinError); return false; }
     try {
-      const res = await api.stepUp({ purpose: 'TRANSFER', targetId: preview.previewId, password, pin });
+      const res = await api.stepUp({ purpose: 'TRANSFER', targetId: preview.previewId, pin });
       actionToken = res.actionToken;
-      approveForm.password.value = '';
       approveForm.pin.value = '';
       return true;
     } catch (err) {
@@ -161,8 +163,12 @@ function init() {
           backToInput('이미 실행된 확인 건입니다. 이체결과조회에서 결과를 확인해 주세요.');
           return false;
         default:
+          if (noteStepUpLimit(err)) { // 남은 시간 안내는 stepUpWait가 한다. 입력한 비밀번호를 자동으로 다시 보내지 않는다.
+            approveForm.pin.value = '';
+            return false;
+          }
+          approveForm.pin.value = ''; // 틀린 PIN을 남기지 않는다(다시 입력받기)
           showApiError(approveForm, err, {
-            REAUTHENTICATION_FAILED: { field: 'password', message: '로그인 비밀번호가 올바르지 않습니다.' },
             PIN_INVALID: { field: 'pin', message: '계좌 비밀번호가 올바르지 않습니다. 4번 틀리면 잠깁니다.' },
             RATE_LIMITED: { message: '승인 요청이 너무 많습니다. 5분 뒤 다시 시도해 주세요.' },
           });
@@ -173,7 +179,7 @@ function init() {
 
   approveForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!preview) return;
+    if (!preview || stepUpWait.isWaiting()) return;
     clearErrors(approveForm);
     setBusy(sendButton, true, '이체 중…');
     editButton.disabled = true;
@@ -197,6 +203,7 @@ function init() {
       setBusy(sendButton, false);
       if (tx?.pending) sendButton.textContent = '같은 내용으로 다시 시도';
       editButton.disabled = Boolean(tx?.pending);
+      stepUpWait.sync();
     }
   });
 
@@ -206,7 +213,7 @@ function init() {
       case 'ACTION_TOKEN_INVALID':
         // 승인 만료·계좌 보안 설정 변경. 같은 확인 건으로 다시 승인받는다.
         actionToken = null;
-        showFormError(approveForm, '승인이 만료되었거나 계좌 보안 설정이 바뀌었습니다. 비밀번호를 다시 입력해 주세요.');
+        showFormError(approveForm, '승인이 만료되었거나 계좌 보안 설정이 바뀌었습니다. 계좌 비밀번호를 다시 입력해 주세요.');
         return;
       case 'PREVIEW_EXPIRED':
         backToInput('확인 시간이 지났습니다. 다시 진행해 주세요.');
@@ -232,7 +239,6 @@ function init() {
     preview = null;
     actionToken = null;
     tx = null;
-    document.getElementById('result-id').textContent = res.transferId;
     document.getElementById('result-time').textContent = formatDateTime(res.createdAt);
     document.getElementById('result-to').textContent = `${res.details.toAccountNumber} (${res.details.receiverName})`;
     document.getElementById('result-amount').textContent = formatAmount(res.amount);
