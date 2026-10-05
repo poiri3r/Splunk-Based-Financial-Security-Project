@@ -331,13 +331,13 @@ export const api = {
 
   // ---- 예금·적금 (R5·A6) ----
   savingsProducts: () => get(`${V2}/savings-products`, false),
-  // 가입·납입은 출금 계좌 PIN만 보낸다(2026-10-04 합의, 로그인 비밀번호 제외). 해지는 계속 로그인 비밀번호.
+  // 백엔드 v6.2: 가입은 출금 계좌 PIN만, 추가 납입은 로그인 비밀번호 + PIN, 해지는 로그인 비밀번호.
   newSavingsJoin: ({ productId, sourceAccountId, amount, termsVersion, pin }) =>
     new IdempotentTx(`${V2}/savings`, { productId, sourceAccountId, amount, termsVersion, pin }),
   listSavings: () => get(`${V2}/savings`),
   getSavings: (subscriptionId) => get(`${V2}/savings/${id(subscriptionId)}`),
-  newSavingsPayment: (subscriptionId, { sourceAccountId, version, pin }) =>
-    new IdempotentTx(`${V2}/savings/${id(subscriptionId)}/payments`, { sourceAccountId, version, pin }),
+  newSavingsPayment: (subscriptionId, { sourceAccountId, version, password, pin }) =>
+    new IdempotentTx(`${V2}/savings/${id(subscriptionId)}/payments`, { sourceAccountId, version, password, pin }),
   closureQuote: (subscriptionId, targetAccountId) =>
     get(`${V2}/savings/${id(subscriptionId)}/closure-quote${query({ targetAccountId })}`),
   newSavingsClosure: (subscriptionId, { targetAccountId, version, quoteDate, quoteToken, password }) =>

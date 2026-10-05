@@ -1,6 +1,6 @@
 // 목 서버. api.js의 transport()가 USE_MOCK일 때 handle(request)를 호출한다.
 // 반드시 진짜 Response를 돌려줘 실제 서버와 같은 파싱·오류 처리 경로를 타게 한다.
-// 계약은 백엔드 v6.1(backend/ 소스의 Controller·DTO·Service, docs/V6_1_CHANGES.md)을 따른다. 실서버 확인을 대신하지 않는다.
+// 계약은 백엔드 v6.2(backend/ 소스의 Controller·DTO·Service, docs/V6_1_CHANGES.md·V6_2_PIN_ONLY.md)를 따른다. 실서버 확인을 대신하지 않는다.
 //
 // 상태는 sessionStorage에 저장한다(멀티 페이지라 메모리는 페이지 이동 시 사라진다).
 //   mock-db    : 사용자·계좌·원장·토큰·멱등키·예적금 등 (JSON)
@@ -860,10 +860,12 @@ function stepUpRemaining(s, now, request) {
   return end > now ? Math.max(1, Math.ceil((end - now) / 1000)) : 0;
 }
 const stepUpLimited = (seconds) => fail(429, 'RATE_LIMITED', '잠시 후 다시 시도해 주세요.', undefined, { 'Retry-After': String(seconds) });
-function stepUpRequest(db, user) {
+// checkPasswordBlock=false: PIN 이체 승인(v6.2 pinRequest). 설정 승인의 비밀번호 차단과 무관하게 요청량만 본다.
+function stepUpRequest(db, user, checkPasswordBlock = true) {
   const now = Date.now();
   const s = stepUpState(db, user, now);
-  const wait = stepUpRemaining(s, now, true);
+  const wait = checkPasswordBlock ? stepUpRemaining(s, now, true)
+    : (s.requests.length >= 30 ? Math.max(1, Math.ceil((s.requests[0] + STEP_UP_MINUTE - now) / 1000)) : 0);
   if (wait > 0) stepUpLimited(wait);
   s.requests.push(now);
 }
@@ -882,8 +884,7 @@ function stepUpVerify(db, user, password) {
   fail(401, 'REAUTHENTICATION_FAILED', '비밀번호가 올바르지 않습니다.');
 }
 
-// 이체 승인(TRANSFER)은 계좌 비밀번호(PIN)만 확인한다(password가 와도 무시). 2026-10-04 백엔드와 합의한 변경이며,
-// 백엔드 확정 계약(필드·authenticationMethod 값)이 오기 전의 예상 계약이다. 설정 승인은 계속 로그인 비밀번호.
+// 이체 승인(TRANSFER)은 계좌 비밀번호(PIN)만 확인한다(v6.2, password가 와도 무시). 설정 승인은 계속 로그인 비밀번호 필수.
 function stepUp(ctx) {
   const { db, user, body } = ctx;
   const transfer = body.purpose === 'TRANSFER';
@@ -893,7 +894,7 @@ function stepUp(ctx) {
     purpose: blank(body.purpose) || !/^(TRANSFER|ACCOUNT_PIN|DEBIT_SETTING|TRANSFER_LIMITS)$/.test(body.purpose),
     targetId: !str(body.targetId) || !UUID_ANY_RE.test(body.targetId),
   });
-  stepUpRequest(db, user);
+  stepUpRequest(db, user, !transfer);
   const u = db.users[user];
   if (body.purpose === 'TRANSFER') {
     const p = db.previews[body.targetId];
@@ -1266,7 +1267,8 @@ function joinSavings(ctx) {
     if (amount < cents(product.minimum) || amount > cents(product.maximum)) conflict('PRODUCT_AMOUNT_INVALID');
     const source = ownedAccount(db, user, body.sourceAccountId);
     funding(db, user, source, amount);
-    verifyPin(source, body.pin); // 2026-10-04 합의: 가입은 출금 계좌 PIN만 확인(예상 계약)
+    limit(db, `savings-join:${user}`, 30, 60); // v6.2: 가입 요청 사용자별 1분 30회
+    verifyPin(source, body.pin); // v6.2: 가입은 출금 계좌 PIN만 확인
     let number;
     do number = `3${randomDigits(15)}`; while (accountByNumber(db, number));
     const holdingId = createAccount(db, user, { number, accountName: product.name, accountType: product.accountType, debitEnabled: false });
@@ -1296,6 +1298,7 @@ function period(opened, day) {
 function paySavings(ctx) {
   const { db, user, params, body, headers } = ctx;
   check({
+    password: blank(body.password) || tooLong(body.password, 64), // v6.2: 추가 납입은 로그인 비밀번호 유지
     pin: optPattern(body.pin, /^\d{4}$/),
     sourceAccountId: !str(body.sourceAccountId) || !UUID_ANY_RE.test(body.sourceAccountId),
     version: !Number.isInteger(body.version) || body.version < 0,
@@ -1316,7 +1319,8 @@ function paySavings(ctx) {
     if (holding.status !== 'ACTIVE') conflict('ACCOUNT_UNAVAILABLE');
     const amount = BigInt(c.installment);
     funding(db, user, source, amount);
-    verifyPin(source, body.pin); // 2026-10-04 합의: 납입은 출금 계좌 PIN만 확인(예상 계약)
+    savingsAuth(db, user, body.password);
+    verifyPin(source, body.pin);
     consumeLimit(db, user, amount);
     move(db, body.sourceAccountId, c.accountId, amount);
     c.payments.push({ period: p, paidOn: day, amount: String(amount) });
