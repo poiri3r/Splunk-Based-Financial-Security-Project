@@ -82,6 +82,7 @@ class AccountManagementService {
             throw new ApiException(HttpStatus.CONFLICT,"LIMIT_INCREASE_NOT_ALLOWED","이 화면에서는 한도 감액만 가능합니다.");
     }
     @Transactional public StepUpView authorize(StepUpRequest r){
+        if(r.password()==null||r.password().isBlank())throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_INPUT","로그인 비밀번호가 필요합니다.","password");
         stepUpLimiter.request(current.id());BankUser u=user();Object changes=intent(r);
         if(changes instanceof LimitsIntent i){if(!u.publicId.equals(r.targetId().toString()))throw new ApiException(HttpStatus.NOT_FOUND,"NOT_FOUND","설정 대상을 확인해 주세요.");checkLimits(u,i);}
         else {Account a=owned(r.targetId());SavingsService.checking(a);version(a.settingsVersion,changes instanceof PinIntent i?i.version():((DebitIntent)changes).version());}

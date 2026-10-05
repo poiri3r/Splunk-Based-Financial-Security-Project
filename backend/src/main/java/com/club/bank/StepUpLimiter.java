@@ -26,8 +26,12 @@ import org.springframework.http.HttpStatus;
   if(request&&s.requests.size()>=30)end=Math.max(end,s.requests.peekFirst()+MINUTE);
   return end>now?Math.max(1,(end-now+999)/1000):0;
  }
- synchronized void request(Long user){
-  long now=clock.millis();State s=state(user,now);long wait=remaining(s,now,true);
+ synchronized void request(Long user){request(user,true);}
+ synchronized void pinRequest(Long user){request(user,false);}
+ private void request(Long user,boolean checkPasswordBlock){
+  long now=clock.millis();State s=state(user,now);
+  long wait=checkPasswordBlock?remaining(s,now,true):
+   (s.requests.size()>=30?Math.max(1,(s.requests.peekFirst()+MINUTE-now+999)/1000):0);
   if(wait>0)throw new StepUpRateLimited(wait);
   s.requests.addLast(now); // rejected requests do not prolong either window
  }

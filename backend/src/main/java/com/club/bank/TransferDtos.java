@@ -13,7 +13,7 @@ record PreviewRequest(@NotNull UUID fromAccountId,@NotBlank @Pattern(regexp="LOC
 record TransferSnapshot(String fromAccountId,String fromAccountNumber,String bankCode,
                         String toAccountNumber,String receiverName,boolean nameVerified,String memo) {}
 record PreviewView(String previewId,TransferSnapshot details,String amount,String fee,String currency,Instant expiresAt) {}
-record StepUpRequest(@NotBlank @Size(max=64) String password,@NotBlank @Pattern(regexp="TRANSFER|ACCOUNT_PIN|DEBIT_SETTING|TRANSFER_LIMITS") String purpose,@NotNull UUID targetId,
+record StepUpRequest(@Size(max=64) String password,@NotBlank @Pattern(regexp="TRANSFER|ACCOUNT_PIN|DEBIT_SETTING|TRANSFER_LIMITS") String purpose,@NotNull UUID targetId,
     @Pattern(regexp="[0-9]{4}") String pin,com.fasterxml.jackson.databind.JsonNode changes) {}
 record StepUpView(String actionToken,Instant expiresAt,String authenticationMethod) {}
 record ExecuteTransferRequest(@NotNull UUID previewId,@NotBlank @Size(max=128) String actionToken) {}

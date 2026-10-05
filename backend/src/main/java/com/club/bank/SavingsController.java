@@ -6,7 +6,7 @@ import java.util.*;
 import java.time.LocalDate;
 record SavingsJoin(@NotBlank String productId,@NotNull UUID sourceAccountId,
  @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using=MoneyStringDeserializer.class) @NotBlank @Pattern(regexp="[1-9][0-9]{0,7}(\\.[0-9]{1,2})?") String amount,
- @NotBlank String termsVersion,@NotBlank @Size(max=64) String password,@Pattern(regexp="[0-9]{4}") String pin) {}
+ @NotBlank String termsVersion,@Size(max=64) String password,@Pattern(regexp="[0-9]{4}") String pin) {}
 record SavingsPay(@NotNull UUID sourceAccountId,@NotNull @PositiveOrZero Long version,
  @NotBlank @Size(max=64) String password,@Pattern(regexp="[0-9]{4}") String pin) {}
 record SavingsClose(@NotNull UUID targetAccountId,@NotNull @PositiveOrZero Long version,

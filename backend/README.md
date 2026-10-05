@@ -1,6 +1,8 @@
-# Bank backend v6.1 — 프론트 협의 후 백엔드 5개 수정
+# Bank backend v6.2 — 즉시이체·예적금 가입 PIN 단독 승인
 
-`bank-backendv6.zip` 기반 수정본입니다. 변경 상세는 [v6.1 변경 안내](docs/V6_1_CHANGES.md), 실행 결과는 [v6.1 검증 결과](docs/VALIDATION_V6_1.md)를 확인하세요. 압축본의 `dist/bank-backend-0.1.0.jar`는 이 소스로 빌드한 실행 파일입니다.
+v6.1 기반 수정본입니다. 최신 변경 및 프론트 요청 예시는 [v6.2 PIN 단독 승인](docs/V6_2_PIN_ONLY.md), 검증 결과는 [v6.2 검증 결과](docs/VALIDATION_V6_2.md)를 먼저 확인하세요.
+
+이하 v6.1 기록: `bank-backendv6.zip` 기반 수정본입니다. 변경 상세는 [v6.1 변경 안내](docs/V6_1_CHANGES.md), 실행 결과는 [v6.1 검증 결과](docs/VALIDATION_V6_1.md)를 확인하세요. 압축본의 `dist/bank-backend-0.1.0.jar`는 이 소스로 빌드한 실행 파일입니다.
 
 v6 기반 설명: `bank-backendv5-final.zip`에서 API·가입·복구 정책을 정리했습니다. API 경로는 `/api/v2`로 통일합니다. 배포본 이름 v6과 API 버전 v2는 서로 다릅니다.
 

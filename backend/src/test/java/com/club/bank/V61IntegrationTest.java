@@ -73,16 +73,18 @@ class V61IntegrationTest extends V6Support {
   var r=new HashMap<>(signup("bytepassworduser","unused"));r.put("password","가".repeat(25)+"A2!");
   assertEquals("password",call(body(post("/api/v2/auth/register").header("Idempotency-Key",key()),r),400).path("field").asText());
  }
- @Test void transferAndSettingsShareFailuresAndReturnRetryAfter()throws Exception{
+ @Test void settingsFailuresReturnRetryAfterWithoutBlockingPinTransfer()throws Exception{
   var a=customer();var b=customer();deposit(a,"100.00");var p=preview(a,b,"1.00").path("previewId").asText();
   var limits=call(auth(get("/api/v2/me/transfer-limits"),a),200);
   Map<String,Object> settings=new HashMap<>(Map.of("purpose","TRANSFER_LIMITS","targetId",limits.path("customerId").asText(),"password","wrong","changes",Map.of("version",limits.path("version").asLong(),"perTransfer","100.00","daily","100.00")));
   Map<String,Object> transfer=new HashMap<>(Map.of("purpose","TRANSFER","targetId",p,"password","wrong","pin",PIN));
-  for(int i=0;i<4;i++)assertEquals("REAUTHENTICATION_FAILED",call(auth(body(post("/api/v2/auth/step-up"),i%2==0?settings:transfer),a),401).path("code").asText());
+  for(int i=0;i<4;i++)assertEquals("REAUTHENTICATION_FAILED",call(auth(body(post("/api/v2/auth/step-up"),settings),a),401).path("code").asText());
   settings.put("password",PASSWORD);call(auth(body(post("/api/v2/auth/step-up"),settings),a),200);
-  var res=mvc.perform(auth(body(post("/api/v2/auth/step-up"),transfer),a)).andReturn().getResponse();
+  settings.put("password","wrong");
+  var res=mvc.perform(auth(body(post("/api/v2/auth/step-up"),settings),a)).andReturn().getResponse();
   assertEquals(429,res.getStatus(),res.getContentAsString());assertEquals("RATE_LIMITED",json.readTree(res.getContentAsString()).path("code").asText());assertEquals("300",res.getHeader("Retry-After"));
   assertEquals(429,mvc.perform(auth(body(post("/api/v2/auth/step-up"),settings),a)).andReturn().getResponse().getStatus());
+  call(auth(body(post("/api/v2/auth/step-up"),transfer),a),200);
   // Password step-up block must not turn into a login lock.
   login(a.username(),PASSWORD);
  }
