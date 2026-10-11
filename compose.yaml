@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bankdb
+      POSTGRES_USER: bank
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bank -d bankdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres,demo,demo-verification
+      DB_URL: jdbc:postgresql://db:5432/bankdb
+      DB_USER: bank
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      BANK_ENCRYPTION_KEY: ${BANK_ENCRYPTION_KEY:?BANK_ENCRYPTION_KEY is required}
+      BANK_LOOKUP_KEY: ${BANK_LOOKUP_KEY:?BANK_LOOKUP_KEY is required}
+      BANK_DEMO_INBOX_KEY: ${BANK_DEMO_INBOX_KEY:?BANK_DEMO_INBOX_KEY is required}
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_BIND_ADDRESS:?FRONTEND_BIND_ADDRESS is required}:5500:80"
+
+volumes:
+  postgres-data:
