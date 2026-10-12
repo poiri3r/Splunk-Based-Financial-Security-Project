@@ -12,6 +12,8 @@ services:
       retries: 20
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - db_net
 
   backend:
     build: ./backend
@@ -27,6 +29,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - db_net
+      - app_net
 
   frontend:
     build: ./frontend
@@ -34,6 +39,19 @@ services:
       - backend
     ports:
       - "${FRONTEND_BIND_ADDRESS:?FRONTEND_BIND_ADDRESS is required}:5500:80"
+    networks:
+      - dmz_net
+      - app_net
 
 volumes:
   postgres-data:
+
+networks:
+  dmz_net:
+    driver: bridge
+  app_net:
+    driver: bridge
+    internal: true
+  db_net:
+    driver: bridge
+    internal: true
