@@ -13,6 +13,7 @@ class CurrentCustomer {
         return id;
     }
     void requireFresh(BankUser u){
+        Audit.customer(u.getPublicId());
         var a=SecurityContextHolder.getContext().getAuthentication();
         if(!u.getId().equals(id()) || !(a.getCredentials() instanceof Long version) || version!=u.getAuthVersion())
             throw new ApiException(HttpStatus.UNAUTHORIZED,"UNAUTHORIZED","다시 로그인해 주세요.");

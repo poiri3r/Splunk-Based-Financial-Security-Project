@@ -25,8 +25,9 @@ record LoginUnlock(@NotBlank @Size(max=128) String resetToken){}
   this.crypto=crypto;this.policy=policy;this.credentials=credentials;this.passwords=passwords;this.em=em;
  }
  private ApiException invalid(){return new IdentityFailure(HttpStatus.BAD_REQUEST,"RECOVERY_INVALID","복구 정보를 확인해 주세요.");}
- private BankUser lock(Long id){var u=(BankUser)org.hibernate.Hibernate.unproxy(users.findLockedById(id).orElseThrow(this::invalid));em.refresh(u,LockModeType.PESSIMISTIC_WRITE);return u;}
+ private BankUser lock(Long id){var u=(BankUser)org.hibernate.Hibernate.unproxy(users.findLockedById(id).orElseThrow(this::invalid));em.refresh(u,LockModeType.PESSIMISTIC_WRITE);Audit.customer(u.publicId);return u;}
  @Transactional(noRollbackFor={IdentityFailure.class,PinFailure.class}) public Map<String,Object> verify(RecoveryProof r,String ip){
+  Audit.detail("purpose",r.purpose());Audit.detail("method",r.method());
   gate.lock();identity.rate("recovery-proof-ip:"+ip,20,3600);BankUser u;
   if(r.method().equals("ACCOUNT")){
    if(r.name()==null||r.accountNumber()==null||r.pin()==null||r.recoveryCode()!=null)throw invalid();
@@ -40,23 +41,25 @@ record LoginUnlock(@NotBlank @Size(max=128) String resetToken){}
    var c=codes.findById(SecurityConfig.hash(r.recoveryCode())).orElseThrow(this::invalid);
    if(c.consumed)throw invalid();u=lock(c.userId);c.consumed=true;
   }
-  if(r.purpose().equals("USERNAME"))return Map.of("username",u.username(crypto));
+  if(r.purpose().equals("USERNAME")){Audit.success();return Map.of("username",u.username(crypto));}
   String token=IdentityService.secret();var g=new RecoveryGrant();g.tokenHash=SecurityConfig.hash(token);g.userId=u.id;g.authVersion=u.authVersion;
   g.purpose=r.purpose();g.expiresAt=IdentityService.now().plusSeconds(300);grants.save(g);
-  return Map.of("resetToken",token,"expiresAt",g.expiresAt,"purpose",g.purpose);
+  Audit.success();return Map.of("resetToken",token,"expiresAt",g.expiresAt,"purpose",g.purpose);
  }
  private RecoveryGrant grant(String raw,String purpose){
   var g=grants.findById(SecurityConfig.hash(raw)).orElseThrow(this::invalid);
   if(g.consumed||!g.purpose.equals(purpose)||!IdentityService.now().isBefore(g.expiresAt))throw invalid();return g;
  }
  @Transactional(noRollbackFor=IdentityFailure.class) public void password(PasswordReset r,String ip){
+  Audit.detail("purpose","PASSWORD");
   gate.lock();identity.rate("reset-ip:"+ip,20,3600);var g=grant(r.resetToken(),"PASSWORD");var u=lock(g.userId);
   if(u.authVersion!=g.authVersion)throw invalid();credentials.newPassword(r.newPassword(),u);
   if(passwords.matches(r.newPassword(),u.passwordHash))throw CredentialPolicy.weak("newPassword");
-  u.passwordHash=passwords.encode(r.newPassword());u.loginFailures=0;g.consumed=true;identity.revoke(u);
+  u.passwordHash=passwords.encode(r.newPassword());u.loginFailures=0;g.consumed=true;identity.revoke(u);Audit.success();
  }
  @Transactional(noRollbackFor=IdentityFailure.class) public void unlock(LoginUnlock r,String ip){
+  Audit.detail("purpose","LOGIN_UNLOCK");
   gate.lock();identity.rate("unlock-ip:"+ip,20,3600);var g=grant(r.resetToken(),"LOGIN_UNLOCK");var u=lock(g.userId);
-  if(u.authVersion!=g.authVersion)throw invalid();u.loginFailures=0;g.consumed=true;identity.revoke(u);
+  if(u.authVersion!=g.authVersion)throw invalid();u.loginFailures=0;g.consumed=true;identity.revoke(u);Audit.success();
  }
 }

@@ -58,6 +58,7 @@ class IdentityService {
   Map.of("id","SERVICE","version",TERMS.get("SERVICE"),"required",true,"text","프로젝트 시연용 서비스 약관 초안입니다. 실제 금융거래를 제공하지 않습니다."),
   Map.of("id","PRIVACY","version",TERMS.get("PRIVACY"),"required",true,"text","프로젝트 시연용 개인정보 처리 동의 초안입니다. 가입 정보와 거래 시연 기록을 저장합니다. 실제 운영 전 별도 검토가 필요합니다."));}
  @Transactional(noRollbackFor=IdentityFailure.class) public Map<String,Object> start(ChallengeRequest r,String ip){
+  Audit.detail("purpose",r.purpose());Audit.detail("channel",r.channel());
   gate.lock();rate("start-ip:"+ip,30,60);Long owner=r.purpose().equals("PROFILE")?self().id:null;
   String contact=normalize(r.channel(),r.contact());String lookup=crypto.lookup("bank_users."+(r.channel().equals("EMAIL")?"email":"phone"),contact);
   rate("send-minute:"+r.purpose()+":"+r.channel()+":"+lookup,1,60);rate("send-hour:"+r.purpose()+":"+r.channel()+":"+lookup,10,3600);
@@ -67,9 +68,10 @@ class IdentityService {
   String code=String.format(Locale.ROOT,"%06d",RANDOM.nextInt(1000000)),inbox=secret();
   c.codeHash=crypto.lookup("contact_challenges.code",c.id+":"+code);c.inboxHash=SecurityConfig.hash(inbox);c.expiresAt=now().plusSeconds(300);
   sender.deliver(c,code);challenges.save(c);
-  return Map.of("challengeId",c.id,"expiresAt",c.expiresAt,"delivery","SIMULATED","inboxToken",inbox);
+  Audit.detail("challengeId",c.id);Audit.success();return Map.of("challengeId",c.id,"expiresAt",c.expiresAt,"delivery","SIMULATED","inboxToken",inbox);
  }
  @Transactional(noRollbackFor=IdentityFailure.class) public Map<String,Object> verify(UUID id,VerifyChallengeRequest r,String ip){
+  Audit.detail("challengeId",id.toString());
   gate.lock();rate("verify-ip:"+ip,60,60);var c=challenges.findById(id.toString()).orElse(null);
   if(c==null||c.consumed||c.verified||!now().isBefore(c.expiresAt))throw new IdentityFailure(HttpStatus.BAD_REQUEST,"CHALLENGE_INVALID","인증 요청이 없거나 만료되었습니다.");
   if(c.userId!=null&&!c.userId.equals(self().id))throw new ApiException(HttpStatus.NOT_FOUND,"NOT_FOUND","인증 요청을 확인해 주세요.");
@@ -78,7 +80,7 @@ class IdentityService {
    throw new IdentityFailure(HttpStatus.BAD_REQUEST,c.consumed?"CHALLENGE_LOCKED":"CODE_INVALID","인증번호가 올바르지 않습니다.");
   }
   String grant=secret();c.verified=true;c.grantHash=SecurityConfig.hash(grant);c.grantExpiresAt=now().plusSeconds(300);c.codeEncrypted=null;
-  return Map.of("contactGrant",grant,"expiresAt",c.grantExpiresAt,"assurance","SIMULATED");
+  Audit.success();return Map.of("contactGrant",grant,"expiresAt",c.grantExpiresAt,"assurance","SIMULATED");
  }
  private ContactChallenge grant(String raw,String purpose,Long user){
   var c=challenges.findByGrantHash(SecurityConfig.hash(raw)).orElse(null);
@@ -119,14 +121,14 @@ class IdentityService {
   var receipt=new RegistrationReceipt();receipt.id=key;receipt.requestHash=hash;receipt.customerId=u.publicId;receipts.save(receipt);audit.afterCommit("SUCCESS",u.publicId);return Map.of("customerId",u.publicId);
  }
  @Transactional(noRollbackFor=IdentityFailure.class) public void contact(ContactApplyRequest r){
-  gate.lock();var u=self();rate("auth:"+u.id,5,300);password(r.currentPassword(),u);apply(u,grant(r.contactGrant(),"PROFILE",u.id));
+  gate.lock();var u=self();rate("auth:"+u.id,5,300);password(r.currentPassword(),u);var proof=grant(r.contactGrant(),"PROFILE",u.id);Audit.detail("channel",proof.channel);apply(u,proof);Audit.detail("changedFields",List.of("contact"));Audit.success();
  }
  @Transactional(readOnly=true) public List<Map<String,Object>> consents(){return consents.findByUserIdOrderById(current.id()).stream().map(t->Map.<String,Object>of("id",t.termId,"version",t.termVersion,"acceptedAt",t.acceptedAt)).toList();}
  @Transactional(readOnly=true) public Map<String,Long> codeStatus(){return Map.of("remaining",codes.countByUserIdAndConsumedFalse(current.id()));}
  @Transactional(noRollbackFor=IdentityFailure.class) public Map<String,Object> issue(PasswordCheckRequest r){
   gate.lock();var u=self();rate("auth:"+u.id,5,300);password(r.currentPassword(),u);codes.revoke(u.id);List<String> raw=new ArrayList<>();
   for(int i=0;i<5;i++){String s=secret();var c=new RecoveryCode();c.codeHash=SecurityConfig.hash(s);c.userId=u.id;c.createdAt=now();codes.save(c);raw.add(s);}
-  return Map.of("codes",raw,"oneTimeDisplay",true);
+  Audit.success();return Map.of("codes",raw,"oneTimeDisplay",true);
  }
  private RecoveryCode recovery(String raw){var c=codes.findById(SecurityConfig.hash(raw)).orElse(null);if(c==null||c.consumed)throw invalidRecovery();return c;}
  void revoke(BankUser u){u.authVersion++;tokens.revokeAll(u.id);transfers.revoke(u.id);settings.revoke(u.id);challenges.revoke(u.id);codes.revoke(u.id);}
@@ -134,9 +136,10 @@ class IdentityService {
   gate.lock();var u=self();rate("auth:"+u.id,5,300);password(r.currentPassword(),u);
   credentials.newPassword(r.newPassword(),u);
   if(passwords.matches(r.newPassword(),u.passwordHash))throw CredentialPolicy.weak("newPassword");
-  u.passwordHash=passwords.encode(r.newPassword());u.loginFailures=0;revoke(u);
+  u.passwordHash=passwords.encode(r.newPassword());u.loginFailures=0;revoke(u);Audit.detail("changedFields",List.of("password"));Audit.success();
  }
  @Transactional(noRollbackFor=IdentityFailure.class) public void resetPin(UUID id,PinResetRequest r){
+  Audit.detail("accountId",id.toString());Audit.detail("method",r.recoveryCode()!=null?"RECOVERY_CODE":"CONTACT");
   gate.lock();var u=self();rate("auth:"+u.id,5,300);password(r.currentPassword(),u);
   if((r.recoveryCode()==null)==(r.contactGrant()==null))throw invalidRecovery();
   ContactChallenge proof=null;
@@ -144,7 +147,7 @@ class IdentityService {
   else {proof=grant(r.contactGrant(),"PROFILE",u.id);if(!"SMS".equals(proof.channel)||!proof.contactLookup.equals(u.phoneLookup))throw invalidRecovery();}
   var a=accounts.findByPublicIdAndOwnerId(id.toString(),u.id).orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"ACCOUNT_NOT_FOUND","계좌를 확인해 주세요."));
   accounts.findLockedById(a.id).orElseThrow();em.refresh(a,LockModeType.PESSIMISTIC_WRITE);
-  SavingsService.checking(a);credentials.pin(r.newPin(),u);a.pinHash=passwords.encode(r.newPin());a.pinFailures=0;a.pinLockedUntil=null;a.settingsVersion++;a.securityVersion++;if(proof!=null)proof.consumed=true;revoke(u);
+  SavingsService.checking(a);credentials.pin(r.newPin(),u);a.pinHash=passwords.encode(r.newPin());a.pinFailures=0;a.pinLockedUntil=null;a.settingsVersion++;a.securityVersion++;if(proof!=null)proof.consumed=true;revoke(u);Audit.success();
  }
 }
 class IdentityFailure extends ApiException {IdentityFailure(HttpStatus status,String code,String message){super(status,code,message);}}

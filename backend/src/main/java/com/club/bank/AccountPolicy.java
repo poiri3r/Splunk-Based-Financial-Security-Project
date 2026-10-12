@@ -15,16 +15,18 @@ class AccountPolicy {
     static void debit(Account a){
         if(a.pinHash==null)throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_PIN_REQUIRED","계좌 비밀번호를 먼저 등록해 주세요.");
         if(!a.debitEnabled)throw new ApiException(HttpStatus.CONFLICT,"DEBIT_DISABLED","출금 등록이 해제된 계좌입니다.");
-        if(pinLocked(a))throw new ApiException(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");
+        if(pinLocked(a)){Audit.security("pin.locked_attempt","PIN_LOCKED",a,false);throw new ApiException(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");}
     }
     void verifyPin(Account a,String pin){
-        if(pinLocked(a))throw new PinFailure(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");
+        Audit.detail("accountId",a.publicId);
+        if(pinLocked(a)){Audit.security("pin.locked_attempt","PIN_LOCKED",a,false);throw new PinFailure(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");}
         if(a.pinHash==null)throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_PIN_REQUIRED","계좌 비밀번호를 먼저 등록해 주세요.");
         if(pin==null)throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_PIN_REQUIRED","계좌 비밀번호가 필요합니다.");
         
         if(!passwords.matches(pin,a.pinHash)){
             a.pinFailures++;
-            if(a.pinFailures>=4){a.pinLockedUntil=null;a.securityVersion++;}
+            if(a.pinFailures>=4){a.pinLockedUntil=null;a.securityVersion++;Audit.security("pin.locked","PIN_LOCKED",a,true);}
+            Audit.security("pin.failure",a.pinFailures>=4?"PIN_LOCKED":"PIN_INVALID",a,true);
             throw new PinFailure(a.pinFailures>=4?HttpStatus.LOCKED:HttpStatus.FORBIDDEN,
                 a.pinFailures>=4?"PIN_LOCKED":"PIN_INVALID",a.pinFailures>=4?"계좌 비밀번호가 잠겼습니다. 본인확인 후 재설정해 주세요.":"계좌 비밀번호가 올바르지 않습니다.");
         }

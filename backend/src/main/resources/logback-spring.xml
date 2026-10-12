@@ -2,9 +2,7 @@
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
   <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
-  <appender name="REGISTRATION_JSON" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder><pattern>%msg%n</pattern><charset>UTF-8</charset></encoder>
-  </appender>
-  <logger name="BANK_REGISTRATION_AUDIT" level="INFO" additivity="false"><appender-ref ref="REGISTRATION_JSON"/></logger>
+  <!-- AuditLogSink attaches a JSONL file appender after startup. File failure falls back to stderr. -->
+  <logger name="BANK_AUDIT" level="INFO" additivity="false"/>
   <root level="INFO"><appender-ref ref="CONSOLE"/></root>
 </configuration>
