@@ -13,6 +13,7 @@ import java.util.Map;
   if(t==null||!t.expiresAt.isAfter(now)||!t.lastActivityAt.plusSeconds(600).isAfter(now)||t.authVersion!=t.user.getAuthVersion())return null;
   // Conditional update prevents concurrent requests from reviving an expired/deleted token.
   if(touch&&tokens.touch(hash,now,now.minusSeconds(600))!=1)return null;
+  Audit.customer(t.user.getPublicId());
   return new Principal(t.user.getId(),t.authVersion);
  }
  @Transactional(readOnly=true) public Map<String,Object> status(String raw){

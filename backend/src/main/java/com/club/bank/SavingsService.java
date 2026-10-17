@@ -46,11 +46,19 @@ class SavingsService {
  IdempotencyKeys.require(key);
  var old=keys.findByUserIdAndRequestKey(u.id,key).orElse(null);if(old==null)return null;
  if(!old.operation.equals(op)||!old.requestHash.equals(hash))throw conflict("IDEMPOTENCY_KEY_CONFLICT");
- var r=receipts.findById(old.resultId).orElseThrow();return decode(crypto.decrypt("savings.receipt",r.id,r.resultEncrypted));
+ var r=receipts.findById(old.resultId).orElseThrow();var result=(com.fasterxml.jackson.databind.node.ObjectNode)decode(crypto.decrypt("savings.receipt",r.id,r.resultEncrypted));
+ var metadata=result.remove("_audit");if(metadata!=null&&metadata.isObject())metadata.fields().forEachRemaining(e->{if(Audit.FIELDS.contains(e.getKey())&&e.getValue().isTextual())Audit.detail(e.getKey(),e.getValue().asText());});
+ auditResult(result);Audit.replay();return result;
  }
  private JsonNode finish(BankUser u,String key,String op,String hash,Object result){
- var r=new SavingsReceipt();r.resultEncrypted=crypto.encrypt("savings.receipt",r.id,encode(result));receipts.save(r);
+ var encoded=(com.fasterxml.jackson.databind.node.ObjectNode)decode(encode(result));auditResult(encoded);
+ var stored=encoded.deepCopy();var context=Audit.ACTIVE.get();if(context!=null)stored.set("_audit",json.valueToTree(context.details));
+ var r=new SavingsReceipt();r.resultEncrypted=crypto.encrypt("savings.receipt",r.id,encode(stored));receipts.save(r);Audit.success();
  keys.save(new IdempotencyRecord(u,key,hash,op,r.id));return decode(encode(result));
+ }
+ private void auditResult(JsonNode result){
+ for(String field:List.of("subscriptionId","productId","accountId","targetAccountId","principal","interest","tax","total"))
+  if(result.hasNonNull(field))Audit.detail(field,result.get(field).asText());
  }
  private void funding(BankUser u,Account from,BigDecimal amount){checking(from);usable(from);AccountPolicy.debit(from);
  if(from.balance.compareTo(amount)<0)throw conflict("INSUFFICIENT_BALANCE");policy.checkLimits(u,amount);}
@@ -67,8 +75,10 @@ class SavingsService {
  @Transactional(readOnly=true) public Object list(){return Map.of("items",contracts.findByUserIdOrderByAcceptedAtDesc(current.id()).stream().map(this::view).toList());}
  @Transactional(readOnly=true) public Object detail(UUID id){return view(contract(id));}
  @Transactional(noRollbackFor=PinFailure.class) public Object join(String key,SavingsJoin r){
+ Audit.detail("sourceAccountId",r.sourceAccountId().toString());Audit.detail("amount",new BigDecimal(r.amount()).setScale(2).toPlainString());
  BankUser u=current.locked();CredentialPolicy.banking(u);String h=hash("SAVINGS_JOIN",r);var old=replay(u,key,"SAVINGS_JOIN",h);if(old!=null)return old;
  Product product=catalog().stream().filter(p->p.productId.equals(r.productId())).findFirst().orElseThrow(()->new ApiException(HttpStatus.BAD_REQUEST,"PRODUCT_NOT_FOUND","상품을 확인해 주세요."));
+ Audit.detail("productId",product.productId);
  if(!TERMS.equals(r.termsVersion()))throw conflict("TERMS_VERSION_MISMATCH");BigDecimal amount=new BigDecimal(r.amount()).setScale(2);
  if(amount.compareTo(new BigDecimal(product.minimum))<0||amount.compareTo(new BigDecimal(product.maximum))>0)throw conflict("PRODUCT_AMOUNT_INVALID");
  Account source=owned(r.sourceAccountId());lock(source);funding(u,source,amount);limiter.check(u.id,"savings-join",30,60);policy.verifyPin(source,r.pin());
@@ -76,16 +86,17 @@ class SavingsService {
  Account holding=new Account("3"+String.format("%015d",RANDOM.nextLong(1000000000000000L)),u,BigDecimal.ZERO.setScale(2),crypto);
  holding.accountName=product.name;holding.accountType=product.accountType;holding.debitEnabled=false;accounts.saveAndFlush(holding);
  var c=new SavingsContract();c.userId=u.id;c.accountId=holding.id;c.productId=product.productId;c.termsVersion=TERMS;c.acceptedAt=Instant.now();c.openedOn=AccountPolicy.today();c.months=product.months;c.maturityOn=c.openedOn.plusMonths(c.months);c.annualRate=new BigDecimal(product.annualRate);c.earlyRate=new BigDecimal(product.earlyRate);c.installment=amount;contracts.save(c);
- policy.consume(u,amount);move(source,holding,amount);payment(c,0,amount,c.openedOn);return finish(u,key,"SAVINGS_JOIN",h,view(c));
+ policy.consume(u,amount);Audit.detail("transferId",move(source,holding,amount));payment(c,0,amount,c.openedOn);return finish(u,key,"SAVINGS_JOIN",h,view(c));
  }
  static int period(LocalDate opened,LocalDate day){int p=(day.getYear()-opened.getYear())*12+day.getMonthValue()-opened.getMonthValue();if(day.isBefore(opened.plusMonths(p)))p--;return p;}
  @Transactional(noRollbackFor=PinFailure.class) public Object pay(UUID id,String key,SavingsPay r){
+ Audit.detail("subscriptionId",id.toString());Audit.detail("sourceAccountId",r.sourceAccountId().toString());
  BankUser u=current.locked();CredentialPolicy.banking(u);String h=hash("SAVINGS_PAY",List.of(id,r));var old=replay(u,key,"SAVINGS_PAY",h);if(old!=null)return old;
- var c=contract(id);active(c);AccountManagementService.version(c.version,r.version());if(!c.productId.equals("MOCK-SAVINGS-12"))throw conflict("PAYMENT_NOT_SUPPORTED");
+ var c=contract(id);Audit.detail("amount",c.installment.toPlainString());Audit.detail("productId",c.productId);active(c);AccountManagementService.version(c.version,r.version());if(!c.productId.equals("MOCK-SAVINGS-12"))throw conflict("PAYMENT_NOT_SUPPORTED");
  LocalDate day=AccountPolicy.today();int period=period(c.openedOn,day);if(period<0||period>=c.months||!day.isBefore(c.maturityOn))throw conflict("PAYMENT_PERIOD_CLOSED");
  if(payments.existsByContractIdAndPeriodIndex(c.id,period))throw conflict("PERIOD_ALREADY_PAID");
  Account source=owned(r.sourceAccountId()),holding=accounts.findById(c.accountId).orElseThrow();lock(source,holding);usable(holding);funding(u,source,c.installment);authenticate(u,r.password());policy.verifyPin(source,r.pin());
- policy.consume(u,c.installment);move(source,holding,c.installment);payment(c,period,c.installment,day);c.version++;return finish(u,key,"SAVINGS_PAY",h,view(c));
+ policy.consume(u,c.installment);Audit.detail("transferId",move(source,holding,c.installment));payment(c,period,c.installment,day);c.version++;return finish(u,key,"SAVINGS_PAY",h,view(c));
  }
  static BigDecimal interest(List<SavingsPayment> rows,LocalDate end,BigDecimal rate){BigDecimal total=BigDecimal.ZERO;for(var p:rows)total=total.add(p.amount.multiply(rate).multiply(BigDecimal.valueOf(Math.max(0,ChronoUnit.DAYS.between(p.paidOn,end)))));return total.divide(BigDecimal.valueOf(365),2,RoundingMode.DOWN);}
  private Map<String,Object> quoteView(SavingsContract c,Account target,LocalDate day){
@@ -95,14 +106,15 @@ class SavingsService {
  var q=new LinkedHashMap<String,Object>();q.put("subscriptionId",c.id);q.put("targetAccountId",target.publicId);q.put("version",c.version);q.put("quoteDate",day);q.put("principal",holding.balance.toPlainString());q.put("interest",interest.toPlainString());q.put("tax","0.00");q.put("total",total.toPlainString());q.put("closureType",mature?"MATURE":"EARLY");q.put("simulation",true);
  q.put("quoteToken",crypto.lookup("savings.quote",c.userId+"|"+encode(q)));return q;
  }
- @Transactional public Object quote(UUID id,UUID target){current.locked();var c=contract(id);Account a=owned(target),h=accounts.findById(c.accountId).orElseThrow();lock(a,h);return quoteView(c,a,AccountPolicy.today());}
+ @Transactional public Object quote(UUID id,UUID target){Audit.detail("subscriptionId",id.toString());Audit.detail("targetAccountId",target.toString());current.locked();var c=contract(id);Account a=owned(target),h=accounts.findById(c.accountId).orElseThrow();lock(a,h);var result=quoteView(c,a,AccountPolicy.today());auditResult(json.valueToTree(result));Audit.success();return result;}
  @Transactional public Object close(UUID id,String key,SavingsClose r){
+ Audit.detail("subscriptionId",id.toString());Audit.detail("targetAccountId",r.targetAccountId().toString());
  BankUser u=current.locked();CredentialPolicy.banking(u);String hash=hash("SAVINGS_CLOSE",List.of(id,r));var old=replay(u,key,"SAVINGS_CLOSE",hash);if(old!=null)return old;
  var c=contract(id);active(c);AccountManagementService.version(c.version,r.version());Account target=owned(r.targetAccountId()),holding=accounts.findById(c.accountId).orElseThrow();lock(target,holding);
- LocalDate day=AccountPolicy.today();var q=quoteView(c,target,day);
+ LocalDate day=AccountPolicy.today();var q=quoteView(c,target,day);auditResult(json.valueToTree(q));Audit.detail("sourceAccountId",holding.publicId);Audit.detail("productId",c.productId);
  if(!day.equals(r.quoteDate())||!java.security.MessageDigest.isEqual(q.get("quoteToken").toString().getBytes(StandardCharsets.UTF_8),r.quoteToken().getBytes(StandardCharsets.UTF_8)))throw conflict("QUOTE_STALE");
- authenticate(u,r.password());BigDecimal principal=holding.balance,interest=new BigDecimal(q.get("interest").toString());move(holding,target,principal);
- if(interest.signum()>0){target.balance=target.balance.add(interest);ledger.save(new LedgerEntry(target,"SIMULATED_SAVINGS_INTEREST",interest,UUID.randomUUID().toString(),crypto));}
+ authenticate(u,r.password());BigDecimal principal=holding.balance,interest=new BigDecimal(q.get("interest").toString());Audit.detail("transferId",move(holding,target,principal));Audit.detail("amount",q.get("total").toString());
+ if(interest.signum()>0){target.balance=target.balance.add(interest);String interestId=UUID.randomUUID().toString();ledger.save(new LedgerEntry(target,"SIMULATED_SAVINGS_INTEREST",interest,interestId,crypto));Audit.detail("interestTransferId",interestId);}
  holding.status="CLOSED";holding.securityVersion++;holding.settingsVersion++;c.status="CLOSED";c.closedOn=day;c.version++;
  var result=new LinkedHashMap<String,Object>(q);result.remove("quoteToken");result.put("status","CLOSED");result.put("version",c.version);return finish(u,key,"SAVINGS_CLOSE",hash,result);
  }

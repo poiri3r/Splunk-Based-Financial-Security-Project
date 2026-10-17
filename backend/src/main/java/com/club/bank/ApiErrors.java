@@ -22,7 +22,7 @@ class ApiErrors extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Object> business(ApiException ex) {
-        RegistrationAudit.failure(ex.error.code());
+        Audit.failure(ex.error.code());
         var response=ResponseEntity.status(ex.status);
         if(ex instanceof StepUpRateLimited limited)response.header("Retry-After",Long.toString(limited.retryAfter));
         return response.body(ex.error);
@@ -34,7 +34,7 @@ class ApiErrors extends ResponseEntityExceptionHandler {
         // 여러 필드 오류가 있으면 필드명 순서로 한 건을 반환한다. 입력값 자체는 반환하지 않는다.
         var field = ex.getBindingResult().getFieldErrors().stream()
                 .min(Comparator.comparing(org.springframework.validation.FieldError::getField));
-        RegistrationAudit.failure("INVALID_INPUT");
+        Audit.failure("INVALID_INPUT");
         String name = field.map(org.springframework.validation.FieldError::getField).orElse(null);
         return ResponseEntity.badRequest().body(new ApiError("INVALID_INPUT", "입력값의 필수 여부와 형식을 확인해 주세요.", name));
     }
@@ -42,7 +42,7 @@ class ApiErrors extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        RegistrationAudit.failure("INVALID_INPUT");
+        Audit.failure("INVALID_INPUT");
         return ResponseEntity.badRequest().body(new ApiError("INVALID_INPUT", "JSON 본문과 필드 자료형을 확인해 주세요."));
     }
 
@@ -57,14 +57,14 @@ class ApiErrors extends ResponseEntityExceptionHandler {
             case 415 -> "UNSUPPORTED_MEDIA_TYPE";
             default -> status.is5xxServerError() ? "INTERNAL_ERROR" : "REQUEST_ERROR";
         };
-        RegistrationAudit.failure(code);
+        Audit.failure(code);
         return super.handleExceptionInternal(ex, new ApiError(code, "요청 경로, 방식과 형식을 확인해 주세요."), headers, status, request);
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Object> unexpected(Exception ex) {
         // 비밀번호나 요청 본문이 로그에 섞이지 않도록 예외 종류만 기록한다.
-        RegistrationAudit.failure("INTERNAL_ERROR");
+        Audit.failure("INTERNAL_ERROR");
         log.error("Unhandled API exception type={}", ex.getClass().getName());
         return ResponseEntity.internalServerError().body(new ApiError("INTERNAL_ERROR", "요청 처리 중 오류가 발생했습니다."));
     }

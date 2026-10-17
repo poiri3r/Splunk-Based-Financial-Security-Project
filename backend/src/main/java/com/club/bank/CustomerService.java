@@ -16,7 +16,7 @@ class CustomerService {
     @Transactional(readOnly=true) public CustomerView me() {return view(current.get());}
     @Transactional public void logout(String authorization) {
         if(authorization==null || !authorization.startsWith("Bearer ")) throw new ApiException(HttpStatus.UNAUTHORIZED,"UNAUTHORIZED","로그인이 필요합니다.");
-        tokens.revoke(SecurityConfig.hash(authorization.substring(7)),current.id());
+        tokens.revoke(SecurityConfig.hash(authorization.substring(7)),current.id());Audit.success();
     }
     @Transactional(noRollbackFor=IdentityFailure.class) public CustomerView update(UpdateCustomerRequest r) {
         gate.lock();identity.rate("profile-password:"+current.id(),5,300);
@@ -44,7 +44,7 @@ class CustomerService {
         u.emailEncrypted=encrypt(u,"email",email);u.emailLookup=email==null?null:crypto.lookup("bank_users.email",email);
         u.phoneEncrypted=encrypt(u,"phone",phone);u.phoneLookup=phone==null?null:crypto.lookup("bank_users.phone",phone);
         users.flush(); // @Version is incremented before building the response.
-        return view(u);
+        Audit.detail("changedFields",java.util.List.of("profile"));Audit.success();return view(u);
     }
     private String optional(String v,String field) {
         if(v==null)return null;

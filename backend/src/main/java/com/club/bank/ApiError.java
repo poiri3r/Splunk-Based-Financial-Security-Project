@@ -23,6 +23,7 @@ record ApiError(String code, String message, String field) {
 
     // 보안 필터 오류는 ControllerAdvice에 도달하지 않으므로 같은 형식으로 직접 쓴다.
     static void write(HttpServletResponse response, ObjectMapper json, int status, ApiError error) throws IOException {
+        Audit.failure(error.code());
         response.setStatus(status);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

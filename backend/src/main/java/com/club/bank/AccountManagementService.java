@@ -39,7 +39,8 @@ class AccountManagementService {
         a.hidden,a.displayOrder,a.debitEnabled,a.pinHash!=null,AccountPolicy.pinLocked(a),AccountPolicy.pinLocked(a)?a.pinLockedUntil:null,a.settingsVersion);}
     @Transactional(readOnly=true) public AccountSettings settings(UUID id){return view(owned(id));}
     @Transactional public AccountSettings preferences(UUID id,JsonNode r){
-        user();Account a=locked(id);fields(r,Set.of("version","alias","hidden","order"));
+        Audit.detail("accountId",id.toString());user();Account a=locked(id);fields(r,Set.of("version","alias","hidden","order"));
+        Audit.detail("changedFields",java.util.stream.Stream.of("alias","hidden","order").filter(r::has).toList());
         Long v=versionField(r);version(a.settingsVersion,v);
         if(!r.has("alias")&&!r.has("hidden")&&!r.has("order"))throw invalid();
         if(r.has("alias")){
@@ -49,7 +50,7 @@ class AccountManagementService {
         }
         if(r.has("hidden")){if(!r.get("hidden").isBoolean())throw invalid();a.hidden=r.get("hidden").asBoolean();}
         if(r.has("order")){if(!r.get("order").isIntegralNumber()||!r.get("order").canConvertToInt()||r.get("order").asInt()<0||r.get("order").asInt()>9999)throw invalid();a.displayOrder=r.get("order").asInt();}
-        a.settingsVersion++;return view(a);
+        a.settingsVersion++;Audit.success();return view(a);
     }
     private static void fields(JsonNode node,Set<String> allowed){
         if(node==null||!node.isObject())throw invalid();var names=node.fieldNames();while(names.hasNext())if(!allowed.contains(names.next()))throw invalid();
@@ -82,6 +83,7 @@ class AccountManagementService {
             throw new ApiException(HttpStatus.CONFLICT,"LIMIT_INCREASE_NOT_ALLOWED","이 화면에서는 한도 감액만 가능합니다.");
     }
     @Transactional public StepUpView authorize(StepUpRequest r){
+        Audit.event("settings.approve");Audit.detail("purpose",r.purpose());Audit.detail("targetId",r.targetId().toString());
         if(r.password()==null||r.password().isBlank())throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_INPUT","로그인 비밀번호가 필요합니다.","password");
         stepUpLimiter.request(current.id());BankUser u=user();Object changes=intent(r);
         if(changes instanceof LimitsIntent i){if(!u.publicId.equals(r.targetId().toString()))throw new ApiException(HttpStatus.NOT_FOUND,"NOT_FOUND","설정 대상을 확인해 주세요.");checkLimits(u,i);}
@@ -90,7 +92,7 @@ class AccountManagementService {
         byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         SettingAction g=new SettingAction();g.tokenHash=SecurityConfig.hash(token);g.userId=u.id;g.targetId=r.targetId().toString();
         g.purpose=r.purpose();g.payloadHash=hash(r.purpose(),changes);g.expiresAt=Instant.now().plusSeconds(300).truncatedTo(java.time.temporal.ChronoUnit.MICROS);grants.save(g);
-        return new StepUpView(token,g.expiresAt,"PASSWORD_RECHECK");
+        Audit.success();return new StepUpView(token,g.expiresAt,"PASSWORD_RECHECK");
     }
     private SettingAction grant(String token,String purpose,String target,Object changes){
         var g=grants.findById(SecurityConfig.hash(token)).orElse(null);
@@ -99,25 +101,28 @@ class AccountManagementService {
         return g;
     }
     @Transactional public AccountSettings debit(UUID id,DebitChangeRequest r){
+Audit.detail("accountId",id.toString());Audit.detail("changedFields",List.of("debitEnabled"));
         user();Account a=locked(id);SavingsService.checking(a);version(a.settingsVersion,r.changes().version());
         SettingAction g=grant(r.actionToken(),"DEBIT_SETTING",id.toString(),r.changes());
-        a.debitEnabled=r.changes().enabled();a.settingsVersion++;a.securityVersion++;g.consumed=true;return view(a);
+        a.debitEnabled=r.changes().enabled();a.settingsVersion++;a.securityVersion++;g.consumed=true;Audit.success();return view(a);
     }
     @Transactional(noRollbackFor=PinFailure.class) public AccountSettings pin(UUID id,PinChangeRequest r){
+        Audit.detail("accountId",id.toString());Audit.detail("changedFields",List.of("pin"));
         BankUser u=user();Account a=locked(id);SavingsService.checking(a);version(a.settingsVersion,r.changes().version());
         SettingAction g=grant(r.actionToken(),"ACCOUNT_PIN",id.toString(),r.changes());
         // No setting/grant writes before verification: failures commit only PIN attempt state.
         credentials.pin(r.changes().newPin(),u);
         if(a.pinHash!=null)policy.verifyPin(a,r.currentPin());
         a.pinHash=passwords.encode(r.changes().newPin());a.pinFailures=0;a.pinLockedUntil=null;
-        a.settingsVersion++;a.securityVersion++;g.consumed=true;return view(a);
+        a.settingsVersion++;a.securityVersion++;g.consumed=true;Audit.success();return view(a);
     }
     private LimitsView limitsView(BankUser u){LocalDate day=AccountPolicy.today();BigDecimal used=policy.used(u.id,day);return new LimitsView(u.publicId,money(u.perTransferLimit),money(u.dailyLimit),money(used),
         u.dailyLimit==null?null:money(u.dailyLimit.subtract(used).max(BigDecimal.ZERO)),day,u.limitVersion);}
     @Transactional(readOnly=true) public LimitsView limits(){return limitsView(current.get());}
     @Transactional public LimitsView limits(LimitsChangeRequest r){
-        BankUser u=user();checkLimits(u,r.changes());SettingAction g=grant(r.actionToken(),"TRANSFER_LIMITS",u.publicId,r.changes());
+        Audit.detail("changedFields",List.of("perTransfer","daily"));
+        BankUser u=user();Audit.detail("targetId",u.publicId);checkLimits(u,r.changes());SettingAction g=grant(r.actionToken(),"TRANSFER_LIMITS",u.publicId,r.changes());
         u.perTransferLimit=new BigDecimal(r.changes().perTransfer()).setScale(2);u.dailyLimit=new BigDecimal(r.changes().daily()).setScale(2);
-        u.limitVersion++;g.consumed=true;return limitsView(u);
+        u.limitVersion++;g.consumed=true;Audit.detail("perTransfer",money(u.perTransferLimit));Audit.detail("daily",money(u.dailyLimit));Audit.success();return limitsView(u);
     }
 }
