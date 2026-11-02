@@ -55,6 +55,7 @@ class AccountQueryService {
             a.pinHash=passwords.encode(request.pin());a.openingTermsVersion=request.termsVersion();a.openingTermsAcceptedAt=IdentityService.now();
             keys.save(new IdempotencyRecord(u,key,hash,"OPEN_ACCOUNT",a.publicId));
         }
+        Audit.detail("accountId",a.publicId);if(old!=null)Audit.replay();else Audit.success();
         // Opening-result balance is always the original zero, even after later deposits.
         return new OpenedAccount(a.publicId,a.number(crypto),"0.00",a.openedAt);
     }

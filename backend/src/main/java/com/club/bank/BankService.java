@@ -93,12 +93,14 @@ import jakarta.persistence.LockModeType;
         BankUser u=users.findByUsernameLookup(crypto.lookup("bank_users.username",request.username())).orElse(null);
         // ==는 같은지 비교, ||는 또는, !는 부정. 사용자가 없거나 비밀번호가 다르면 401.
         // 앞 조건이 참이면 뒤 조건은 실행하지 않아 null의 필드를 읽는 오류를 피한다.
+        if(u!=null)Audit.customer(u.publicId);
         if(u==null)throw new IdentityFailure(HttpStatus.UNAUTHORIZED,"LOGIN_FAILED","아이디 또는 비밀번호가 올바르지 않습니다.");
         users.findLockedById(u.id).orElseThrow();entityManager.refresh(u,LockModeType.PESSIMISTIC_WRITE);
-        if(u.loginFailures>=3)throw new IdentityFailure(HttpStatus.LOCKED,"LOGIN_LOCKED","본인확인 후 로그인 제한을 해제해 주세요.");
+        if(u.loginFailures>=3){Audit.loginSecurity("login.locked_attempt","LOGIN_LOCKED",u.loginFailures,false);throw new IdentityFailure(HttpStatus.LOCKED,"LOGIN_LOCKED","본인확인 후 로그인 제한을 해제해 주세요.");}
         if(request.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72 || !encoder.matches(request.password(),u.passwordHash)){
             u.loginFailures++;
-            if(u.loginFailures>=3){u.authVersion++;tokens.revokeAll(u.id);}
+            if(u.loginFailures>=3){u.authVersion++;tokens.revokeAll(u.id);Audit.loginSecurity("login.locked","LOGIN_LOCKED",u.loginFailures,true);}
+            Audit.detail("failureCount",u.loginFailures);
             throw new IdentityFailure(u.loginFailures>=3?HttpStatus.LOCKED:HttpStatus.UNAUTHORIZED,
                 u.loginFailures>=3?"LOGIN_LOCKED":"LOGIN_FAILED","아이디 또는 비밀번호가 올바르지 않거나 로그인이 제한되었습니다.");
         }
@@ -108,7 +110,7 @@ import jakarta.persistence.LockModeType;
         // 원본 토큰의 SHA-256 해시, 사용자, 현재부터 8시간 뒤인 만료 시각을 저장한다.
         tokens.save(new AuthToken(SecurityConfig.hash(token),u,Instant.now().plus(Duration.ofHours(8))));
         // expiresIn은 초 단위 JSON 정수다. 원본 토큰은 로그인 응답으로만 반환한다.
-        return new LoginResponse(token,"Bearer",28800);
+        Audit.success();return new LoginResponse(token,"Bearer",28800);
     }
     // 본인 계좌 목록. List는 여러 항목의 목록이고 readOnly는 조회용 트랜잭션이라는 의미다.
     @Transactional(readOnly=true) public List<AccountView> list() {
@@ -165,9 +167,9 @@ import jakarta.persistence.LockModeType;
         BankUser user=current();
         String hash=SecurityConfig.hash("deposit|"+r.accountNumber()+"|"+r.amount().setScale(2).toPlainString());
         IdempotencyRecord old=previous(user,key,hash,"DEPOSIT");
-        if(old!=null) return Map.of("depositId",old.resultId,"status","completed","source","simulated_cash");
+        if(old!=null){Audit.detail("transferId",old.resultId);Audit.detail("amount",r.amount().setScale(2).toPlainString());Audit.detail("accountId",owned(r.accountNumber()).publicId);Audit.replay();return Map.of("depositId",old.resultId,"status","completed","source","simulated_cash");}
         // 가상 입금을 요청한 계좌가 로그인 사용자의 계좌인지 먼저 확인한다.
-        Account account=owned(r.accountNumber());
+        Account account=owned(r.accountNumber());Audit.detail("accountId",account.publicId);Audit.detail("amount",r.amount().setScale(2).toPlainString());
         // 해당 계좌 DB 행에 쓰기 잠금을 요청한다. 잠금은 트랜잭션이 끝날 때 해제된다.
         // 동시 입금·송금의 정확성은 별도 동시성 테스트로 검증해야 한다.
         Account locked=accounts.findLockedById(account.id).orElseThrow();
@@ -186,7 +188,7 @@ import jakarta.persistence.LockModeType;
         ledger.save(new LedgerEntry(locked,"SIMULATED_CASH_DEPOSIT",r.amount(),id,crypto));
         idempotency.save(new IdempotencyRecord(user,key,hash,"DEPOSIT",id));
         // 처리 ID와 가상 입금이라는 출처를 응답한다.
-        return Map.of("depositId",id,"status","completed","source","simulated_cash");
+        Audit.detail("transferId",id);Audit.success();return Map.of("depositId",id,"status","completed","source","simulated_cash");
     }
     // 송금: 출금·입금 잔액과 거래내역 두 건을 하나의 트랜잭션으로 처리한다.
     @Transactional public Map<String,String> transfer(TransferRequest r,String requestKey) {

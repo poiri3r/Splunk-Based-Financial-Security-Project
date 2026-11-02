@@ -60,6 +60,7 @@ class TransferService {
     }
     @Transactional
     public PreviewView preview(PreviewRequest r){
+        Audit.detail("sourceAccountId",r.fromAccountId().toString());Audit.detail("amount",new BigDecimal(r.amount()).setScale(2).toPlainString());
         limiter.check(current.id(),"preview",30,60);
         BankUser u=current.get();
         Account from=accounts.findByPublicIdAndOwnerId(r.fromAccountId().toString(),u.id)
@@ -67,11 +68,13 @@ class TransferService {
         Account to=target(r.toAccountNumber());BigDecimal amount=new BigDecimal(r.amount()).setScale(2);
         if(r.memo()!=null && r.memo().codePoints().anyMatch(Character::isISOControl))
             throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_INPUT","메모에 제어문자를 사용할 수 없습니다.","memo");
+        Audit.detail("targetAccountId",to.publicId);
         TransferEngine.check(from,to,u.id,amount);AccountPolicy.debit(from);policy.checkLimits(u,amount);
         TransferPreview p=new TransferPreview();p.id=UUID.randomUUID().toString();p.user=u;p.source=from;p.target=to;
         p.amount=amount;p.expiresAt=now().plusSeconds(300);
         var snapshot=new TransferSnapshot(from.publicId,from.number(crypto),"LOCAL",to.number(crypto),receiverName(to),false,r.memo());
         p.snapshotEncrypted=encrypt("transfer_previews.snapshot",p.id,snapshot);previews.save(p);
+        Audit.detail("previewId",p.id);Audit.success();
         return new PreviewView(p.id,snapshot,money(amount),"0.00","KRW",p.expiresAt);
     }
     private TransferPreview ownedPreview(UUID id,Long user){return previews.findByIdAndUserId(id.toString(),user).orElseThrow(TransferService::missing);}
@@ -81,8 +84,9 @@ class TransferService {
     }
     @Transactional(noRollbackFor=PinFailure.class)
     public StepUpView stepUp(StepUpRequest r){
+        Audit.event("transfer.approve");Audit.detail("previewId",r.targetId().toString());
         stepUpLimiter.pinRequest(current.id());
-        BankUser u=lockedUser();TransferPreview p=ownedPreview(r.targetId(),u.id);usable(p);
+        BankUser u=lockedUser();TransferPreview p=ownedPreview(r.targetId(),u.id);auditPreview(p);usable(p);
         Account source=accounts.findLockedById(p.source.id).orElseThrow();em.refresh(source,LockModeType.PESSIMISTIC_WRITE);
         AccountPolicy.debit(source);
         // PIN failure is the only persisted mutation if verification fails.
@@ -90,23 +94,26 @@ class TransferService {
         byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         TransferAction a=new TransferAction();a.tokenHash=SecurityConfig.hash(token);a.user=u;a.preview=p;
         a.expiresAt=p.expiresAt;a.accountSecurityVersion=source.securityVersion;actions.save(a);
-        return new StepUpView(token,a.expiresAt,"ACCOUNT_PIN");
+        Audit.success();return new StepUpView(token,a.expiresAt,"ACCOUNT_PIN");
     }
+    private void auditPreview(TransferPreview p){Audit.detail("previewId",p.id);Audit.detail("sourceAccountId",((Account)org.hibernate.Hibernate.unproxy(p.source)).publicId);Audit.detail("targetAccountId",((Account)org.hibernate.Hibernate.unproxy(p.target)).publicId);Audit.detail("amount",money(p.amount));}
     private String key(String raw){
         try{if(raw==null||!UUID.fromString(raw).toString().equals(raw))throw new IllegalArgumentException();return raw;}
         catch(IllegalArgumentException e){throw new ApiException(HttpStatus.BAD_REQUEST,"IDEMPOTENCY_KEY_INVALID","Idempotency-Key는 소문자 표준 UUID여야 합니다.");}
     }
     @Transactional
     public TransferResult execute(ExecuteTransferRequest r,String rawKey){
+        Audit.detail("previewId",r.previewId().toString());
         String key=key(rawKey);BankUser u=lockedUser();
         String hash=crypto.lookup("requests.transfer.v2",r.previewId()+"|"+SecurityConfig.hash(r.actionToken()));
         IdempotencyRecord old=keys.findByUserIdAndRequestKey(u.id,key).orElse(null);
         if(old!=null){
             if(!"TRANSFER_V2".equals(old.operation)||!hash.equals(old.requestHash))
                 throw new ApiException(HttpStatus.CONFLICT,"IDEMPOTENCY_KEY_CONFLICT","같은 키가 다른 요청에 사용되었습니다.");
-            return result(old.resultId,u.id); // Successful replay remains valid after expiry/consumption.
+            var previous=records.findByPublicIdAndUserId(old.resultId,u.id).orElseThrow(TransferService::missing);auditPreview(previous.preview);Audit.detail("transferId",previous.publicId);Audit.replay();
+            return view(previous); // Successful replay remains valid after expiry/consumption.
         }
-        TransferPreview p=ownedPreview(r.previewId(),u.id);usable(p);
+        TransferPreview p=ownedPreview(r.previewId(),u.id);auditPreview(p);usable(p);
         TransferAction a=actions.findById(SecurityConfig.hash(r.actionToken())).orElse(null);
         if(a==null||!a.user.id.equals(u.id)||!a.preview.id.equals(p.id)||!"TRANSFER".equals(a.purpose)||a.consumed||!now().isBefore(a.expiresAt))
             throw new ApiException(HttpStatus.FORBIDDEN,"ACTION_TOKEN_INVALID","이 확인 건에 대한 계좌 PIN 재확인이 필요합니다.");
@@ -118,7 +125,7 @@ class TransferService {
         record.snapshotEncrypted=encrypt("transfer_records.snapshot",record.publicId,snapshot);records.save(record);
         p.resultId=record.publicId;a.consumed=true;
         keys.save(new IdempotencyRecord(u,key,hash,"TRANSFER_V2",record.publicId));
-        return view(record);
+        Audit.detail("transferId",record.publicId);Audit.success();return view(record);
     }
     @Transactional(readOnly=true)
     public TransferResult get(UUID id){return result(id.toString(),current.id());}
