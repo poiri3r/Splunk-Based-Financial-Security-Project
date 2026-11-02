@@ -25,7 +25,10 @@ services:
       BANK_ENCRYPTION_KEY: ${BANK_ENCRYPTION_KEY:?BANK_ENCRYPTION_KEY is required}
       BANK_LOOKUP_KEY: ${BANK_LOOKUP_KEY:?BANK_LOOKUP_KEY is required}
       BANK_DEMO_INBOX_KEY: ${BANK_DEMO_INBOX_KEY:?BANK_DEMO_INBOX_KEY is required}
+      BANK_AUDIT_DIR: /app/logs
       SERVER_FORWARD_HEADERS_STRATEGY: native
+    volumes:
+      - backend-audit:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -39,12 +42,39 @@ services:
       - backend
     ports:
       - "${FRONTEND_BIND_ADDRESS:?FRONTEND_BIND_ADDRESS is required}:5500:80"
+    volumes:
+      - frontend-logs:/var/log/bank
     networks:
       - dmz_net
       - app_net
 
+  log-collector:
+    build: ./ops/logging
+    user: "10001:10001"
+    network_mode: none
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 20s
+    mem_limit: 128m
+    volumes:
+      - backend-audit:/source/backend:ro
+      - frontend-logs:/source/nginx:ro
+      - collected-logs:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres-data:
+  backend-audit:
+  frontend-logs:
+  collected-logs:
 
 networks:
   dmz_net:
