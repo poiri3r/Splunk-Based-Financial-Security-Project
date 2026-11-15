@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 class IdentityService {
  private final CredentialPolicy credentials;
- private final RegistrationAudit audit;
+ private final RegistrationAudit audit;private final VulnFlags vuln;
  private final IdentityGate gate;private final UserRepo users;private final CurrentCustomer current;private final EntityManager em;
  private final ContactChallengeRepo challenges;private final RecoveryCodeRepo codes;private final IdentityRateRepo rates;
  private final RegistrationReceiptRepo receipts;private final TermsConsentRepo consents;private final TokenRepo tokens;
@@ -23,8 +23,8 @@ class IdentityService {
  static final Map<String,String> TERMS=Map.of("SERVICE","2026-10-v1","PRIVACY","2026-10-v1");
  IdentityService(IdentityGate gate,UserRepo users,CurrentCustomer current,EntityManager em,ContactChallengeRepo challenges,
  RecoveryCodeRepo codes,IdentityRateRepo rates,RegistrationReceiptRepo receipts,TermsConsentRepo consents,TokenRepo tokens,
- TransferActionRepo transfers,SettingActionRepo settings,AccountRepo accounts,PasswordEncoder passwords,FieldCrypto crypto,VerificationSender sender,ObjectMapper json,CredentialPolicy credentials,RegistrationAudit audit){
- this.credentials=credentials;this.audit=audit;
+ TransferActionRepo transfers,SettingActionRepo settings,AccountRepo accounts,PasswordEncoder passwords,FieldCrypto crypto,VerificationSender sender,ObjectMapper json,CredentialPolicy credentials,RegistrationAudit audit,VulnFlags vuln){
+ this.credentials=credentials;this.audit=audit;this.vuln=vuln;
  this.gate=gate;this.users=users;this.current=current;this.em=em;this.challenges=challenges;this.codes=codes;this.rates=rates;this.receipts=receipts;this.consents=consents;this.tokens=tokens;this.transfers=transfers;this.settings=settings;this.accounts=accounts;this.passwords=passwords;this.crypto=crypto;this.sender=sender;this.json=json;
  }
  static Instant now(){return Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);}
@@ -108,7 +108,13 @@ class IdentityService {
    users.findByPublicId(previous.customerId).ifPresent(audit::identify);
    audit.afterCommit("REPLAY",previous.customerId);return Map.of("customerId",previous.customerId);
   }
-  rate("register-ip:"+ip,20,3600);newPassword(r.password());
+  // INTENTIONAL-VULN: V-L1 (mass account creation). Default OFF via bank.vuln.mass-registration.enabled.
+  // When ON the per-IP registration throttle (20/hour) is skipped, so one host can script bulk sign-ups;
+  // one phone can already back many accounts (no contact-unique constraint). Detection: registration
+  // outcome=SUCCESS aggregated by phoneCorrelationId (one number → many) or sourceIp (one host → many),
+  // REPLAY excluded. Lab only.
+  if(!vuln.massRegistration)rate("register-ip:"+ip,20,3600);
+  newPassword(r.password());
   if(!TERMS.equals(r.termsVersions()))throw new ApiException(HttpStatus.CONFLICT,"TERMS_VERSION_REQUIRED","현재 필수 약관에 동의해 주세요.");
   if(name.isEmpty()||name.codePoints().anyMatch(Character::isISOControl))throw invalid();
   if(users.findByUsernameLookup(crypto.lookup("bank_users.username",r.username())).isPresent())throw new ApiException(HttpStatus.CONFLICT,"DUPLICATE_USERNAME","이미 사용 중인 아이디입니다.");

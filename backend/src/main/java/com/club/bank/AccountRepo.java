@@ -15,6 +15,10 @@ import java.util.*;
 // 계좌 표에 접근하는 도구.
 interface AccountRepo extends JpaRepository<Account,Long> {
     Optional<Account> findByPublicIdAndOwnerId(String publicId, Long ownerId);
+    // INTENTIONAL-VULN: V-A1 (IDOR/BOLA) support — lookup WITHOUT the owner-id filter.
+    // Only reached when bank.vuln.idor.enabled=true (see VulnFlags); normal paths keep using
+    // findByPublicIdAndOwnerId above. Any caller MUST enforce ownership itself.
+    Optional<Account> findByPublicId(String publicId);
     // 소유자 ID가 같은 계좌만 내부 ID 오름차순으로 조회한다.
     List<Account> findByOwnerIdOrderById(Long ownerId);
     // 계좌번호로 조회한다. 이 함수 자체에는 소유권 검사가 없으므로 서비스에서 확인한다.

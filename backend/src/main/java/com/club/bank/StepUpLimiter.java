@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 @Component class StepUpLimiter {
  private static final long MINUTE=60_000,FIVE_MINUTES=300_000;
  private final Clock clock;
+ // INTENTIONAL-VULN: V-L2 support. Optional so unit tests (new StepUpLimiter(clock)) leave it null = safe.
+ @org.springframework.beans.factory.annotation.Autowired(required=false) VulnFlags vuln;
  private final Map<Long,State> states=new HashMap<>();
  private static class State { Deque<Long> requests=new ArrayDeque<>(),failures=new ArrayDeque<>();long blockedUntil,lastSeen; }
  StepUpLimiter(){this(Clock.systemUTC());}
@@ -27,7 +29,8 @@ import org.springframework.http.HttpStatus;
   return end>now?Math.max(1,(end-now+999)/1000):0;
  }
  synchronized void request(Long user){request(user,true);}
- synchronized void pinRequest(Long user){request(user,false);}
+ // INTENTIONAL-VULN: V-L2 — when enabled, skip the step-up rate limit so PIN guesses are unthrottled.
+ synchronized void pinRequest(Long user){if(vuln!=null&&vuln.pinBruteforce)return;request(user,false);}
  private void request(Long user,boolean checkPasswordBlock){
   long now=clock.millis();State s=state(user,now);
   long wait=checkPasswordBlock?remaining(s,now,true):
