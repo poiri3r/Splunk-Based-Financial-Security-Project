@@ -37,3 +37,4 @@ management:
 #     pin-bruteforce:    { enabled: false }  # V-L2 PIN step-up 제한 완화
 #     mass-registration: { enabled: false }  # V-L1 가입 IP 제한 완화
 #     transfer-race:     { enabled: false }  # V-A2 이체 비관적 락 제거
+#     receiver-id-exposure: { enabled: false }  # V-A3 수취인 검증 응답에 대상 계좌 UUID 노출 (IDOR 선행 단계)

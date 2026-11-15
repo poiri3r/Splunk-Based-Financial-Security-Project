@@ -21,13 +21,13 @@ class TransferService {
     private final ObjectMapper json; private final EntityManager em;
     private final StepUpLimiter stepUpLimiter;
     private final TransferRequestLimiter limiter; private final TransactionCursor cursors;
-    private final AccountPolicy policy;
+    private final AccountPolicy policy; private final VulnFlags vuln;
     private static final SecureRandom RANDOM=new SecureRandom();
     TransferService(CurrentCustomer current,UserRepo users,AccountRepo accounts,TransferPreviewRepo previews,
         TransferActionRepo actions,TransferRecordRepo records,IdempotencyRepo keys,TransferEngine engine,
         FieldCrypto crypto,ObjectMapper json,EntityManager em,
-        TransferRequestLimiter limiter,TransactionCursor cursors,AccountPolicy policy,StepUpLimiter stepUpLimiter) {
-        this.policy=policy;this.stepUpLimiter=stepUpLimiter;
+        TransferRequestLimiter limiter,TransactionCursor cursors,AccountPolicy policy,StepUpLimiter stepUpLimiter,VulnFlags vuln) {
+        this.policy=policy;this.stepUpLimiter=stepUpLimiter;this.vuln=vuln;
         this.current=current;this.users=users;this.accounts=accounts;this.previews=previews;this.actions=actions;
         this.records=records;this.keys=keys;this.engine=engine;this.crypto=crypto;this.json=json;
         this.em=em;this.limiter=limiter;this.cursors=cursors;
@@ -56,7 +56,14 @@ class TransferService {
     public ReceiverView receiver(ReceiverRequest r){
         limiter.check(current.id(),"receiver",30,60);
         Account a=target(r.accountNumber());
-        return new ReceiverView("LOCAL","*".repeat(r.accountNumber().length()-4)+r.accountNumber().substring(r.accountNumber().length()-4),receiverName(a),false);
+        // INTENTIONAL-VULN: V-A3 (Excessive Data Exposure / OWASP API #3). Default OFF via bank.vuln.receiver-id-exposure.enabled.
+        // Normally this lookup returns only the receiver name + masked number. When ON, the target account's
+        // internal UUID (publicId) is leaked in the response, so an attacker who only knows a victim's account
+        // NUMBER can harvest the account UUID here and then read the victim's balance/ledger via V-A1 (IDOR).
+        // Detection: one customer calling receiver-validation for many distinct account numbers (UUID harvest),
+        // usually followed by the IDOR enumeration pattern in the nginx access log. Lab use only.
+        String leakedAccountId=vuln.receiverIdExposure?a.publicId:null;
+        return new ReceiverView("LOCAL","*".repeat(r.accountNumber().length()-4)+r.accountNumber().substring(r.accountNumber().length()-4),receiverName(a),false,leakedAccountId);
     }
     @Transactional
     public PreviewView preview(PreviewRequest r){
