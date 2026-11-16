@@ -18,7 +18,7 @@ class V61IntegrationTest extends V6Support {
  @org.springframework.beans.factory.annotation.Autowired RegistrationAudit audit;
  @org.springframework.beans.factory.annotation.Autowired org.springframework.transaction.PlatformTransactionManager transactions;
  @Test void auditSuccessRequiresCommitAndRollbackProducesFailure()throws Exception{
-  Logger logger=(Logger)LoggerFactory.getLogger("BANK_REGISTRATION_AUDIT");var appender=new ListAppender<ILoggingEvent>();appender.start();logger.addAppender(appender);
+  Logger logger=(Logger)LoggerFactory.getLogger("BANK_AUDIT");var appender=new ListAppender<ILoggingEvent>();appender.start();logger.addAppender(appender);
   try{
    for(boolean rollback:List.of(true,false)){
     var req=new org.springframework.mock.web.MockHttpServletRequest("POST","/api/v2/auth/register");var res=new org.springframework.mock.web.MockHttpServletResponse();
@@ -106,7 +106,7 @@ class V61IntegrationTest extends V6Support {
   assertEquals(json.readTree(first.getContentAsString()),call(body(post("/api/v2/auth/register").header("Idempotency-Key",k),r),201));
  }
  @Test void registrationAuditLogsSafeSuccessReplayFailureAndIgnoresForwardedIp()throws Exception{
-  Logger logger=(Logger)LoggerFactory.getLogger("BANK_REGISTRATION_AUDIT");var appender=new ListAppender<ILoggingEvent>();appender.start();logger.addAppender(appender);
+  Logger logger=(Logger)LoggerFactory.getLogger("BANK_AUDIT");var appender=new ListAppender<ILoggingEvent>();appender.start();logger.addAppender(appender);
   try{
    String phone=phone(),grant=contact("REGISTER","SMS",phone,null),username="audit"+IDS.incrementAndGet(),k=key();var r=signup(username,grant);
    var first=mvc.perform(body(post("/api/v2/auth/register").header("Idempotency-Key",k).header("X-Forwarded-For","1.2.3.4"),r).with(q->{q.setRemoteAddr("192.0.2.10");return q;})).andReturn().getResponse();assertEquals(201,first.getStatus());
@@ -114,13 +114,20 @@ class V61IntegrationTest extends V6Support {
    var bad=new HashMap<>(r);bad.put("username","auditbad"+IDS.incrementAndGet());
    call(body(post("/api/v2/auth/register").header("Idempotency-Key",k),bad),409);
    call(post("/api/v2/auth/register").contentType("application/json").content("{"),400);
-   assertEquals(4,appender.list.size());var success=json.readTree(appender.list.get(0).getFormattedMessage());var replay=json.readTree(appender.list.get(1).getFormattedMessage());
+   // v6.3: one audit logger for all events. Keep registration BUSINESS rows; 4xx also add an http.error row.
+   var rows=new ArrayList<com.fasterxml.jackson.databind.JsonNode>();for(var e:appender.list)rows.add(json.readTree(e.getFormattedMessage()));
+   var reg=rows.stream().filter(n->"registration".equals(n.path("event").asText())).toList();
+   var httpErrors=rows.stream().filter(n->"http.error".equals(n.path("event").asText())).toList();
+   assertEquals(4,reg.size());assertTrue(reg.stream().allMatch(n->"BUSINESS".equals(n.path("eventType").asText())));
+   assertEquals(List.of(409,400),httpErrors.stream().map(n->n.path("httpStatus").asInt()).toList());
+   assertEquals(reg.get(2).path("requestId"),httpErrors.get(0).path("requestId"));
+   var success=reg.get(0);var replay=reg.get(1);
    assertEquals("SUCCESS",success.path("outcome").asText());assertEquals("192.0.2.10",success.path("sourceIp").asText());assertEquals("registration",success.path("event").asText());
    assertEquals(json.readTree(first.getContentAsString()).path("customerId"),success.path("customerId"));assertTrue(success.path("reasonCode").isNull());
    assertEquals("REPLAY",replay.path("outcome").asText());assertEquals(success.path("phoneCorrelationId"),replay.path("phoneCorrelationId"));
    assertEquals(crypto.lookup("audit.registration.phone",IdentityService.normalize("SMS",phone)),success.path("phoneCorrelationId").asText());
-   assertEquals("IDEMPOTENCY_KEY_CONFLICT",json.readTree(appender.list.get(2).getFormattedMessage()).path("reasonCode").asText());
-   assertEquals("FAILURE",json.readTree(appender.list.get(3).getFormattedMessage()).path("outcome").asText());
+   assertEquals("IDEMPOTENCY_KEY_CONFLICT",reg.get(2).path("reasonCode").asText());assertEquals("FAILURE",reg.get(2).path("outcome").asText());
+   assertEquals("FAILURE",reg.get(3).path("outcome").asText());assertEquals("INVALID_INPUT",reg.get(3).path("reasonCode").asText());
    for(var event:appender.list)for(String secret:List.of(phone,username,PASSWORD,grant,"김시연"))assertFalse(event.getFormattedMessage().contains(secret));
   }finally{logger.detachAppender(appender);appender.stop();}
  }
