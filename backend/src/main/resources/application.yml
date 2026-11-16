@@ -27,3 +27,14 @@ management:
     web:
       exposure:
         include: health
+# ---------------------------------------------------------------------------
+# INTENTIONAL-VULN 토글 (Splunk 탐지 실습용). 전부 기본 false — 평소 빌드·배포는 안전.
+# 실습 랩(접속 IP 제한된 격리 환경)에서 공격 시나리오를 돌릴 때만 해당 항목을 true로 켠다.
+# 환경변수로도 켤 수 있음: 예) BANK_VULN_IDOR_ENABLED=true
+# bank:
+#   vuln:
+#     idor:              { enabled: false }  # V-A1 계좌 조회 IDOR/BOLA
+#     pin-bruteforce:    { enabled: false }  # V-L2 PIN step-up 제한 완화
+#     mass-registration: { enabled: false }  # V-L1 가입 IP 제한 완화
+#     transfer-race:     { enabled: false }  # V-A2 이체 비관적 락 제거
+#     receiver-id-exposure: { enabled: false }  # V-A3 수취인 검증 응답에 대상 계좌 UUID 노출 (IDOR 선행 단계)

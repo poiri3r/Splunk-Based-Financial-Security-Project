@@ -5,7 +5,11 @@ import java.util.*;
 
 record ReceiverRequest(@NotBlank @Pattern(regexp="LOCAL") String bankCode,
                        @NotBlank @Pattern(regexp="[0-9]{10,20}") String accountNumber) {}
-record ReceiverView(String bankCode,String maskedAccountNumber,String receiverName,boolean nameVerified) {}
+// INTENTIONAL-VULN: V-A3 — accountId is normally null and (via NON_NULL) omitted from the response.
+// It is populated with the target account's UUID only when bank.vuln.receiver-id-exposure.enabled=true,
+// so with the flag OFF the serialized response is byte-identical to the original four-field shape.
+@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+record ReceiverView(String bankCode,String maskedAccountNumber,String receiverName,boolean nameVerified,String accountId) {}
 record PreviewRequest(@NotNull UUID fromAccountId,@NotBlank @Pattern(regexp="LOCAL") String bankCode,
                       @NotBlank @Pattern(regexp="[0-9]{10,20}") String toAccountNumber,
                       @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using=MoneyStringDeserializer.class) @NotNull @Pattern(regexp="(0|[1-9][0-9]{0,16})(\\.[0-9]{1,2})?") String amount,

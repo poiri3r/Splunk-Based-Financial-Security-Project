@@ -8,8 +8,8 @@ import org.springframework.http.HttpStatus;
 /** Caller holds user then account locks. A PinFailure must commit only the failure counter. */
 @Component
 class AccountPolicy {
-    private final PasswordEncoder passwords;private final LimitUsageRepo usages;
-    AccountPolicy(PasswordEncoder passwords,LimitUsageRepo usages){this.passwords=passwords;this.usages=usages;}
+    private final PasswordEncoder passwords;private final LimitUsageRepo usages;private final VulnFlags vuln;
+    AccountPolicy(PasswordEncoder passwords,LimitUsageRepo usages,VulnFlags vuln){this.passwords=passwords;this.usages=usages;this.vuln=vuln;}
     static LocalDate today(){return LocalDate.now(ZoneId.of("Asia/Seoul"));}
     static boolean pinLocked(Account a){return a.pinFailures>=4;}
     static void debit(Account a){
@@ -19,11 +19,21 @@ class AccountPolicy {
     }
     void verifyPin(Account a,String pin){
         Audit.detail("accountId",a.publicId);
-        if(pinLocked(a)){Audit.security("pin.locked_attempt","PIN_LOCKED",a,false);throw new PinFailure(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");}
+        // INTENTIONAL-VULN: V-L2 (PIN brute force). Default OFF via bank.vuln.pin-bruteforce.enabled (VulnFlags).
+        // When ON, the per-account lockout is disabled: wrong PINs keep returning PIN_INVALID forever
+        // (no counter increment, no PIN_LOCKED), so the 4-digit PIN (10^4) becomes exhaustible, and PIN
+        // spraying across accounts is unbounded. Each attempt still emits a pin.failure audit event.
+        // Detection: pin.failure surge per accountId (vertical) or per sourceIp/customer across many
+        // accountIds (spray) + http.error 429. StepUpLimiter is also relaxed (see StepUpLimiter). Lab only.
+        if(pinLocked(a) && !vuln.pinBruteforce){Audit.security("pin.locked_attempt","PIN_LOCKED",a,false);throw new PinFailure(HttpStatus.LOCKED,"PIN_LOCKED","계좌 비밀번호가 잠겨 있습니다.");}
         if(a.pinHash==null)throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_PIN_REQUIRED","계좌 비밀번호를 먼저 등록해 주세요.");
         if(pin==null)throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_PIN_REQUIRED","계좌 비밀번호가 필요합니다.");
-        
+
         if(!passwords.matches(pin,a.pinHash)){
+            if(vuln.pinBruteforce){ // never lock: unlimited guesses, still audited
+                Audit.security("pin.failure","PIN_INVALID",a,false);
+                throw new PinFailure(HttpStatus.FORBIDDEN,"PIN_INVALID","계좌 비밀번호가 올바르지 않습니다.");
+            }
             a.pinFailures++;
             if(a.pinFailures>=4){a.pinLockedUntil=null;a.securityVersion++;Audit.security("pin.locked","PIN_LOCKED",a,true);}
             Audit.security("pin.failure",a.pinFailures>=4?"PIN_LOCKED":"PIN_INVALID",a,true);

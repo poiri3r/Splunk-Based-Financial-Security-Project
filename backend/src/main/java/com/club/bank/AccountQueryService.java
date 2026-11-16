@@ -16,20 +16,33 @@ class AccountQueryService {
     private final CurrentCustomer current;private final UserRepo users;private final AccountRepo accounts;
     private final LedgerRepo ledger;private final IdempotencyRepo keys;private final FieldCrypto crypto;
     private final BankService bank;private final TransactionCursor cursors;private final AccountManagementService management;
+    private final VulnFlags vuln;
     AccountQueryService(CurrentCustomer current,UserRepo users,AccountRepo accounts,LedgerRepo ledger,IdempotencyRepo keys,
-        FieldCrypto crypto,BankService bank,TransactionCursor cursors,AccountManagementService management,org.springframework.security.crypto.password.PasswordEncoder passwords,CredentialPolicy credentials) {
+        FieldCrypto crypto,BankService bank,TransactionCursor cursors,AccountManagementService management,org.springframework.security.crypto.password.PasswordEncoder passwords,CredentialPolicy credentials,VulnFlags vuln) {
         this.passwords=passwords;this.credentials=credentials;
-        this.management=management;
+        this.management=management;this.vuln=vuln;
         this.current=current;this.users=users;this.accounts=accounts;this.ledger=ledger;this.keys=keys;
         this.crypto=crypto;this.bank=bank;this.cursors=cursors;
     }
     @Transactional(readOnly=true) public AccountList list(boolean includeHidden) {
         return new AccountList(accounts.findByOwnerIdOrderById(current.id()).stream().filter(a->includeHidden||!a.hidden).sorted(Comparator.comparingInt((Account a)->a.displayOrder).thenComparing(a->a.id)).map(this::view).toList());
     }
-    @Transactional(readOnly=true) public AccountDetail detail(UUID id){return view(owned(id));}
+    @Transactional(readOnly=true) public AccountDetail detail(UUID id){return view(accessible(id));}
     private Account owned(UUID id) {
         return accounts.findByPublicIdAndOwnerId(id.toString(),current.id()).orElseThrow(()->
             new ApiException(HttpStatus.NOT_FOUND,"ACCOUNT_NOT_FOUND","계좌가 없거나 접근할 수 없습니다."));
+    }
+    // INTENTIONAL-VULN: V-A1 (IDOR/BOLA). Default OFF via bank.vuln.idor.enabled (see VulnFlags).
+    // Read endpoints GET /accounts/{id} and /accounts/{id}/transactions resolve the account here.
+    // When the flag is ON the owner-id check is dropped, so any authenticated user can read another
+    // customer's account and ledger by guessing/enumerating the UUID in the path. Write paths (open)
+    // keep using owned(). Detection: nginx access log shows one sourceIp hitting many distinct
+    // account UUIDs with HTTP 200 (these GETs emit no business audit event). Lab use only.
+    private Account accessible(UUID id) {
+        if (vuln.idor)
+            return accounts.findByPublicId(id.toString()).orElseThrow(()->
+                new ApiException(HttpStatus.NOT_FOUND,"ACCOUNT_NOT_FOUND","계좌가 없거나 접근할 수 없습니다."));
+        return owned(id);
     }
     private AccountDetail view(Account a) {
         return new AccountDetail(a.publicId,a.number(crypto),a.accountName,a.accountType,a.currency,a.status,
@@ -61,7 +74,7 @@ class AccountQueryService {
     }
     @Transactional(readOnly=true) public TransactionPage history(UUID accountId,LocalDate fromInput,LocalDate toInput,
         TransactionType type,int size,String cursor) {
-        Account a=owned(accountId);
+        Account a=accessible(accountId); // INTENTIONAL-VULN: V-A1 — IDOR also exposes another user's ledger when bank.vuln.idor.enabled=true.
         LocalDate to=toInput==null?LocalDate.now(ZoneId.of("Asia/Seoul")):toInput;
         if(to.getYear()<1900||to.getYear()>9998)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_INPUT","지원하는 날짜 범위는 1900~9998년입니다.","to");
         LocalDate from=fromInput==null?to.minusMonths(1):fromInput;

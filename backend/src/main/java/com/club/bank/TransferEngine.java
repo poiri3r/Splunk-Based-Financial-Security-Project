@@ -13,8 +13,9 @@ class TransferEngine {
     private final AccountRepo accounts; private final LedgerRepo ledger;
     private final EntityManager em; private final FieldCrypto crypto;
     private final CurrentCustomer current;private final UserRepo users;private final AccountPolicy policy;
-    TransferEngine(AccountRepo accounts,LedgerRepo ledger,EntityManager em,FieldCrypto crypto,UserRepo users,AccountPolicy policy,CurrentCustomer current) {
-        this.current=current;
+    private final VulnFlags vuln;
+    TransferEngine(AccountRepo accounts,LedgerRepo ledger,EntityManager em,FieldCrypto crypto,UserRepo users,AccountPolicy policy,CurrentCustomer current,VulnFlags vuln) {
+        this.current=current;this.vuln=vuln;
         this.users=users;this.policy=policy;
         this.accounts=accounts;this.ledger=ledger;this.em=em;this.crypto=crypto;
     }
@@ -35,11 +36,26 @@ class TransferEngine {
     @Transactional(propagation=Propagation.MANDATORY)
     public Posting post(Long owner,Account source,Account target,BigDecimal amount,Long verifiedSecurityVersion) {
         // All current/future callers share user -> ascending account lock order.
-        BankUser user=users.findLockedById(owner).orElseThrow();em.refresh(user,LockModeType.PESSIMISTIC_WRITE);current.requireFresh(user);
+        // INTENTIONAL-VULN: V-A2 (money-movement race / TOCTOU). Default OFF via bank.vuln.transfer-race.enabled.
+        // Normally user+account rows are taken with PESSIMISTIC_WRITE locks (ascending id) so concurrent
+        // transfers serialize. When ON the locks are dropped (plain findById), so parallel requests all read
+        // the same balance, each pass the balance/limit check, and each deduct -> double-spend / overdraft /
+        // daily-limit bypass. Detection: multiple transfer.execute SUCCESS for one user within a few ms
+        // (same previewId/idempotency context). Lab only.
+        BankUser user;
+        if(vuln.transferRace){user=users.findById(owner).orElseThrow();}
+        else{user=users.findLockedById(owner).orElseThrow();em.refresh(user,LockModeType.PESSIMISTIC_WRITE);}
+        current.requireFresh(user);
         if(source.id.equals(target.id)) throw new ApiException(HttpStatus.BAD_REQUEST,"SAME_ACCOUNT","출금 계좌와 입금 계좌가 같습니다.");
-        Account first=accounts.findLockedById(Math.min(source.id,target.id)).orElseThrow();
-        Account second=accounts.findLockedById(Math.max(source.id,target.id)).orElseThrow();
-        em.refresh(first,LockModeType.PESSIMISTIC_WRITE); em.refresh(second,LockModeType.PESSIMISTIC_WRITE);
+        Account first,second;
+        if(vuln.transferRace){
+            first=accounts.findById(Math.min(source.id,target.id)).orElseThrow();
+            second=accounts.findById(Math.max(source.id,target.id)).orElseThrow();
+        }else{
+            first=accounts.findLockedById(Math.min(source.id,target.id)).orElseThrow();
+            second=accounts.findLockedById(Math.max(source.id,target.id)).orElseThrow();
+            em.refresh(first,LockModeType.PESSIMISTIC_WRITE); em.refresh(second,LockModeType.PESSIMISTIC_WRITE);
+        }
         Account from=first.id.equals(source.id)?first:second,to=first.id.equals(target.id)?first:second;
         CredentialPolicy.banking(user);check(from,to,owner,amount);AccountPolicy.debit(from);
         if(verifiedSecurityVersion!=null && verifiedSecurityVersion!=from.securityVersion)
