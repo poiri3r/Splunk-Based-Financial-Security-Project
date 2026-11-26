@@ -36,6 +36,13 @@ class TransferService {
     private static String money(BigDecimal n){return n.setScale(2).toPlainString();}
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"TRANSFER_NOT_FOUND","이체 정보가 없거나 접근할 수 없습니다.");}
     private BankUser lockedUser(){
+        // INTENTIONAL-VULN: V-A2 — transfer-race 토글이 ON이면 사용자 단위 잠금도 생략하여
+        // 동시 이체가 실제로 경쟁하게 한다(기존엔 이 잠금이 직렬화하여 race를 막았음).
+        if(vuln.transferRace){
+            BankUser u=users.findById(current.id()).orElseThrow(TransferService::missing);
+            current.requireFresh(u);
+            return u;
+        }
         BankUser u=users.findLockedById(current.id()).orElseThrow(TransferService::missing);
         em.refresh(u,LockModeType.PESSIMISTIC_WRITE);current.requireFresh(u);return u;
     }
